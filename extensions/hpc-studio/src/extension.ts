@@ -8,6 +8,10 @@ import { SidecarSupervisor, SidecarStatus } from './sidecar';
 import { BackendClient } from './client';
 import { HPCStatusBarItem } from './statusBar';
 import { Structure3DEditorProvider } from './editors/structure3dEditor';
+import { ClustersTreeDataProvider, ClusterTreeItem } from './views/clustersView';
+import { SlurmQueueTreeDataProvider, SlurmJobTreeItem } from './views/slurmQueueView';
+import { SftpExplorerTreeDataProvider, SftpTreeItem } from './views/sftpExplorerView';
+import { AgentChatWebviewViewProvider } from './views/agentChatView';
 
 let supervisor: SidecarSupervisor | null = null;
 let client: BackendClient | null = null;
@@ -15,6 +19,10 @@ let client: BackendClient | null = null;
 export async function activate(context: vscode.ExtensionContext): Promise<{
 	supervisor: SidecarSupervisor;
 	client: BackendClient;
+	clustersProvider: ClustersTreeDataProvider;
+	slurmQueueProvider: SlurmQueueTreeDataProvider;
+	sftpExplorerProvider: SftpExplorerTreeDataProvider;
+	agentChatProvider: AgentChatWebviewViewProvider;
 }> {
 	supervisor = new SidecarSupervisor();
 	context.subscriptions.push(supervisor);
@@ -187,6 +195,106 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 		})
 	);
 
+	// Register Activity Bar Tree Data Providers & Views
+	const clustersProvider = new ClustersTreeDataProvider(context);
+	context.subscriptions.push(clustersProvider);
+	context.subscriptions.push(
+		vscode.window.registerTreeDataProvider('hpc-studio.clustersView', clustersProvider)
+	);
+
+	const slurmQueueProvider = new SlurmQueueTreeDataProvider(() => client);
+	context.subscriptions.push(slurmQueueProvider);
+	context.subscriptions.push(
+		vscode.window.registerTreeDataProvider('hpc-studio.slurmQueueView', slurmQueueProvider)
+	);
+
+	const sftpExplorerProvider = new SftpExplorerTreeDataProvider(() => client);
+	context.subscriptions.push(sftpExplorerProvider);
+	context.subscriptions.push(
+		vscode.window.registerTreeDataProvider('hpc-studio.sftpExplorerView', sftpExplorerProvider)
+	);
+
+	// Register HPC AI Assistant Webview Provider
+	const agentChatProvider = new AgentChatWebviewViewProvider(context.extensionUri, () => client);
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider(AgentChatWebviewViewProvider.viewType, agentChatProvider)
+	);
+
+	// Register Cluster Commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.refreshClusters', () => {
+			clustersProvider.refresh();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.connectClusterTerminal', (item?: ClusterTreeItem) => {
+			clustersProvider.connectClusterTerminal(item);
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.pingCluster', async (item?: ClusterTreeItem) => {
+			await clustersProvider.pingCluster(item);
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.addCluster', async () => {
+			await clustersProvider.addCluster();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.openTunnel', async (item?: ClusterTreeItem) => {
+			await clustersProvider.openTunnel(item);
+		})
+	);
+
+	// Register Slurm Queue Commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.refreshSlurmQueue', async () => {
+			await slurmQueueProvider.refresh();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.submitJob', async () => {
+			await slurmQueueProvider.submitJob();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.cancelJob', async (item?: SlurmJobTreeItem) => {
+			await slurmQueueProvider.cancelJob(item);
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.followJobLog', (item?: SlurmJobTreeItem) => {
+			slurmQueueProvider.followJobLog(item);
+		})
+	);
+
+	// Register SFTP Commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.refreshSftp', () => {
+			sftpExplorerProvider.refresh();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.uploadFile', async (item?: SftpTreeItem) => {
+			await sftpExplorerProvider.uploadFile(item);
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.downloadFile', async (item?: SftpTreeItem) => {
+			await sftpExplorerProvider.downloadFile(item);
+		})
+	);
+
 	// Auto-start backend if enabled
 	const config = vscode.workspace.getConfiguration('hpc-studio');
 	const autoStart = config.get<boolean>('autoStartSidecar', true);
@@ -198,7 +306,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 		});
 	}
 
-	return { supervisor, client };
+	return {
+		supervisor,
+		client,
+		clustersProvider,
+		slurmQueueProvider,
+		sftpExplorerProvider,
+		agentChatProvider,
+	};
 }
 
 export async function deactivate(): Promise<void> {

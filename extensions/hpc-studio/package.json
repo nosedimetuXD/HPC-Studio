@@ -65,11 +65,119 @@
 				"title": "HPC Studio: Reopen as Text",
 				"category": "HPC Studio",
 				"icon": "$(go-to-file)"
+			},
+			{
+				"command": "hpc-studio.refreshClusters",
+				"title": "HPC Studio: Refresh Clusters",
+				"category": "HPC Studio",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "hpc-studio.connectClusterTerminal",
+				"title": "HPC Studio: Connect SSH Terminal",
+				"category": "HPC Studio",
+				"icon": "$(terminal)"
+			},
+			{
+				"command": "hpc-studio.pingCluster",
+				"title": "HPC Studio: Ping Cluster Latency",
+				"category": "HPC Studio",
+				"icon": "$(pulse)"
+			},
+			{
+				"command": "hpc-studio.addCluster",
+				"title": "HPC Studio: Add Cluster Profile",
+				"category": "HPC Studio",
+				"icon": "$(add)"
+			},
+			{
+				"command": "hpc-studio.openTunnel",
+				"title": "HPC Studio: Open SSH Tunnel",
+				"category": "HPC Studio",
+				"icon": "$(plug)"
+			},
+			{
+				"command": "hpc-studio.refreshSlurmQueue",
+				"title": "HPC Studio: Refresh Slurm Queue",
+				"category": "HPC Studio",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "hpc-studio.submitJob",
+				"title": "HPC Studio: Submit Slurm Job (sbatch)",
+				"category": "HPC Studio",
+				"icon": "$(play)"
+			},
+			{
+				"command": "hpc-studio.cancelJob",
+				"title": "HPC Studio: Cancel Job (scancel)",
+				"category": "HPC Studio",
+				"icon": "$(stop-circle)"
+			},
+			{
+				"command": "hpc-studio.followJobLog",
+				"title": "HPC Studio: Stream Live Output (tail -f)",
+				"category": "HPC Studio",
+				"icon": "$(output)"
+			},
+			{
+				"command": "hpc-studio.refreshSftp",
+				"title": "HPC Studio: Refresh Remote Files",
+				"category": "HPC Studio",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "hpc-studio.uploadFile",
+				"title": "HPC Studio: Upload Local File",
+				"category": "HPC Studio",
+				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "hpc-studio.downloadFile",
+				"title": "HPC Studio: Download Remote File",
+				"category": "HPC Studio",
+				"icon": "$(cloud-download)"
 			}
 		],
 		"configuration": {
 			"title": "HPC Studio",
 			"properties": {
+				"hpc-studio.clusters": {
+					"type": "array",
+					"default": [],
+					"description": "Configured remote HPC clusters for SSH/Slurm/SFTP access.",
+					"items": {
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string"
+							},
+							"hostname": {
+								"type": "string"
+							},
+							"user": {
+								"type": "string"
+							},
+							"port": {
+								"type": "number",
+								"default": 22
+							},
+							"identityFile": {
+								"type": "string"
+							},
+							"proxyJump": {
+								"type": "string"
+							},
+							"description": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"name",
+							"hostname"
+						]
+					}
+				},
 				"hpc-studio.pythonPath": {
 					"type": "string",
 					"default": "",
@@ -265,6 +373,105 @@
 				{
 					"command": "hpc-studio.reopenAsText",
 					"when": "activeCustomEditorId == 'hpc-studio.structure3dViewer'"
+				}
+			],
+			"view/title": [
+				{
+					"command": "hpc-studio.addCluster",
+					"when": "view == hpc-studio.clustersView",
+					"group": "navigation@1"
+				},
+				{
+					"command": "hpc-studio.refreshClusters",
+					"when": "view == hpc-studio.clustersView",
+					"group": "navigation@2"
+				},
+				{
+					"command": "hpc-studio.submitJob",
+					"when": "view == hpc-studio.slurmQueueView",
+					"group": "navigation@1"
+				},
+				{
+					"command": "hpc-studio.refreshSlurmQueue",
+					"when": "view == hpc-studio.slurmQueueView",
+					"group": "navigation@2"
+				},
+				{
+					"command": "hpc-studio.uploadFile",
+					"when": "view == hpc-studio.sftpExplorerView",
+					"group": "navigation@1"
+				},
+				{
+					"command": "hpc-studio.refreshSftp",
+					"when": "view == hpc-studio.sftpExplorerView",
+					"group": "navigation@2"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "hpc-studio.connectClusterTerminal",
+					"when": "view == hpc-studio.clustersView && viewItem == cluster-node",
+					"group": "inline@1"
+				},
+				{
+					"command": "hpc-studio.pingCluster",
+					"when": "view == hpc-studio.clustersView && viewItem == cluster-node",
+					"group": "inline@2"
+				},
+				{
+					"command": "hpc-studio.openTunnel",
+					"when": "view == hpc-studio.clustersView && viewItem == cluster-node",
+					"group": "inline@3"
+				},
+				{
+					"command": "hpc-studio.followJobLog",
+					"when": "view == hpc-studio.slurmQueueView && viewItem =~ /^slurm-job/",
+					"group": "inline@1"
+				},
+				{
+					"command": "hpc-studio.cancelJob",
+					"when": "view == hpc-studio.slurmQueueView && (viewItem == slurm-job-running || viewItem == slurm-job-pending)",
+					"group": "inline@2"
+				},
+				{
+					"command": "hpc-studio.downloadFile",
+					"when": "view == hpc-studio.sftpExplorerView && viewItem == sftp-file",
+					"group": "inline@1"
+				},
+				{
+					"command": "hpc-studio.uploadFile",
+					"when": "view == hpc-studio.sftpExplorerView && viewItem == sftp-directory",
+					"group": "inline@1"
+				}
+			]
+		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "hpc-studio-workbench",
+					"title": "HPC Studio",
+					"icon": "media/icons/hpc-studio.svg"
+				}
+			]
+		},
+		"views": {
+			"hpc-studio-workbench": [
+				{
+					"id": "hpc-studio.clustersView",
+					"name": "Remote Clusters & SSH"
+				},
+				{
+					"id": "hpc-studio.slurmQueueView",
+					"name": "Slurm Queue Monitor"
+				},
+				{
+					"id": "hpc-studio.sftpExplorerView",
+					"name": "Cluster File Transfer (SFTP)"
+				},
+				{
+					"id": "hpc-studio.agentChatView",
+					"name": "HPC AI Assistant",
+					"type": "webview"
 				}
 			]
 		}

@@ -2,6 +2,13 @@
 
 set -e
 
+if command -v "$HOME/.local/bin/fnm" &> /dev/null; then
+	eval "$("$HOME/.local/bin/fnm" env --shell bash)"
+elif command -v fnm &> /dev/null; then
+	eval "$(fnm env --shell bash)"
+fi
+
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
 	realpath() { [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"; }
 	ROOT=$(dirname "$(dirname "$(realpath "$0")")")

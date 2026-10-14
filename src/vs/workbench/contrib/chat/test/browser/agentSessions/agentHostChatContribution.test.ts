@@ -34,8 +34,11 @@ import { createTextModel } from '../../../../../../editor/test/common/testTextMo
 import { reviveChatDraft, serializeChatDraft } from '../../../common/attachments/chatDraft.js';
 import { ILogService, NullLogService } from '../../../../../../platform/log/common/log.js';
 import { NullManagedSettingsService } from '../../../../../../platform/policy/common/copilotManagedSettings.js';
-import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
+import { ConfigurationTarget, IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { TestConfigurationService } from '../../../../../../platform/configuration/test/common/testConfigurationService.js';
+import { SAVE_SANDBOX_PATH } from '../../../../../../platform/agentHost/common/sandboxPathGrant.js';
+import { readAgentPermissionResponseMeta } from '../../../../../../platform/agentHost/common/meta/agentPermissionResponseMeta.js';
+import { AgentSandboxSettingId } from '../../../../../../platform/sandbox/common/settings.js';
 import { ChatHookFilesLocationsSettingId } from '../../../../../../platform/chat/common/chatSettings.js';
 import { AgentHostProtocolClient } from '../../../../../../platform/agentHost/browser/agentHostProtocolClient.js';
 import { IAgentHostResourceService } from '../../../../../../platform/agentHost/common/agentHostResourceService.js';
@@ -967,9 +970,13 @@ function createTestServices(disposables: DisposableStore, workingDirectoryResolv
 		getLanguageModelGroups: () => [],
 		...languageModelsServiceOverride,
 	});
+	instantiationService.stub(INotificationService, new class extends mock<INotificationService>() {
+		override error(): void { }
+	});
 	instantiationService.stub(IConfigurationService, {
 		onDidChangeConfiguration: Event.None,
 		inspect: () => ({ policyValue: undefined }),
+		updateValue: async () => { },
 		getValue: (...args: any[]) => {
 			const key = args[0];
 			if (typeof key === 'string') {
@@ -994,7 +1001,7 @@ function createTestServices(disposables: DisposableStore, workingDirectoryResolv
 		...languageModelToolsServiceOverride,
 	});
 	instantiationService.stub(IOutputService, { getChannel: () => undefined });
-	instantiationService.stub(IAgentHostEnablementService, { _serviceBrand: undefined, enabled: constObservable(true), managedSandboxEnforced: constObservable(false) });
+	instantiationService.stub(IAgentHostEnablementService, { _serviceBrand: undefined, enabled: constObservable(true), managedSandboxEnforced: constObservable(false), managedSandboxAllowsBypass: constObservable(false) } satisfies IAgentHostEnablementService);
 	instantiationService.stub(IProgressService, { withProgress: <R,>(_options: IProgressNotificationOptions, task: (progress: IProgress<IProgressStep>) => Promise<R>) => task({ report: () => { } }) });
 	instantiationService.stub(IWorkspaceContextService, {
 		getWorkbenchState: () => workspaceFolders.length > 1 ? WorkbenchState.WORKSPACE : workspaceFolders.length === 1 ? WorkbenchState.FOLDER : WorkbenchState.EMPTY,
@@ -4163,6 +4170,69 @@ suite('AgentHostChatContribution', () => {
 	// ---- Session list (IChatSessionItemController) ----------------------
 
 	suite('session list', () => {
+
+		for (const variant of ['authority', 'query', 'selector-shaped query'] as const) {
+			test(`keeps pending creation and read state separate for same-path ${variant} resources`, async () => {
+				const { instantiationService, agentHostService, chatService } = createTestServices(disposables);
+				const sessionListStore = createSessionListStore(disposables, instantiationService, agentHostService);
+				const controller = disposables.add(instantiationService.createInstance(AgentHostSessionListController, 'agent-host-copilot', 'copilot', sessionListStore, undefined, 'local'));
+				const draft = await controller.newChatSessionItem({ prompt: 'New conversation' }, CancellationToken.None);
+				assert.ok(draft);
+				const session = AgentSession.uri('copilot', AgentSession.id(draft.resource));
+				const other = session.with(variant === 'authority' ? { authority: 'other' } : { query: variant === 'query' ? 'revision=other' : `${CHAT_SUBAGENT_RESOURCE_QUERY_PARAM}=host-identity` });
+				const otherResource = other.with({ scheme: 'agent-host-copilot' });
+				agentHostService.addSession({ session: other, provider: 'copilot', startTime: 0, modifiedTime: 0, status: SessionStatus.Idle });
+				await controller.refresh(CancellationToken.None);
+				const pendingAfterList = controller.isNewSession(draft.resource);
+				chatService.fireDidDisposeSession(otherResource);
+				const pendingAfterOtherClosed = controller.isNewSession(draft.resource);
+				agentHostService.fireNotification({
+					type: NotificationType.SessionAdded, channel: ROOT_STATE_URI,
+					summary: {
+						resource: session.toString(), provider: 'copilot', title: 'Created conversation', status: SessionStatus.Idle,
+						createdAt: new Date(0).toISOString(), modifiedAt: new Date(0).toISOString(),
+					},
+				});
+				controller.setChatSessionItemRead(otherResource, true);
+				assert.deepStrictEqual({
+					pendingAfterList, pendingAfterOtherClosed, pendingAfterCreated: controller.isNewSession(draft.resource),
+					read: controller.items.map(item => [item.resource.toString(), item.isRead]),
+					dispatched: agentHostService.dispatchedActions.map(({ channel, action }) => ({ channel, action })),
+				}, {
+					pendingAfterList: true, pendingAfterOtherClosed: true, pendingAfterCreated: false,
+					read: [[otherResource.toString(), true], [draft.resource.toString(), false]],
+					dispatched: [{ channel: other.toString(), action: { type: ActionType.SessionIsReadChanged, isRead: true } }],
+				});
+			});
+		}
+
+		test('opens the default chat of a fragment-bearing backend session', async () => {
+			const { listController, sessionHandler, agentHostService } = createContribution(disposables);
+			const session = URI.parse('host-session:/opaque-session#revision');
+			const summary: SessionSummary = {
+				resource: session.toString(), provider: 'copilot', title: 'Opaque session', status: SessionStatus.Idle,
+				createdAt: new Date(0).toISOString(), modifiedAt: new Date(0).toISOString(),
+			};
+			const chatSummary = createDefaultChatSummary(summary, 'ahp-chat:/opaque/default');
+			const chat = createChatState(chatSummary);
+			chat.turns.push({
+				id: 'turn', message: { text: 'Default chat request', origin: { kind: MessageKind.User } },
+				responseParts: [], usage: undefined, state: TurnState.Complete,
+			});
+			agentHostService.sessionStates.set(session.toString(), {
+				...createSessionState(summary), lifecycle: SessionLifecycle.Ready, defaultChat: chat.resource, chats: [chatSummary],
+			});
+			agentHostService.addSession({ session, provider: 'copilot', summary: summary.title, startTime: 0, modifiedTime: 0 });
+			agentHostService.chatStates.set(chat.resource, chat);
+			await listController.refresh(CancellationToken.None);
+			const item = listController.items[0];
+			const content = disposables.add(await sessionHandler.provideChatSessionContent(item.resource, CancellationToken.None));
+			await listController.deleteChatSessionItem(item.resource, CancellationToken.None);
+			assert.deepStrictEqual({
+				resource: item.resource.toString(), prompts: content.history.filter(item => item.type === 'request').map(item => item.prompt),
+				deleted: agentHostService.disposedSessions.map(session => session.toString()),
+			}, { resource: 'agent-host-copilot:/opaque-session', prompts: ['Default chat request'], deleted: [session.toString()] });
+		});
 
 		test('refresh populates items from agent host', async () => {
 			const { listController, agentHostService } = createContribution(disposables);
@@ -9673,6 +9743,60 @@ suite('AgentHostChatContribution', () => {
 			await turnPromise;
 		}));
 
+		for (const failSave of [false, true]) {
+			test(`sandbox path grant ${failSave ? 'keeps confirmation open when saving fails' : 'saves before dispatching the grant'}`, () => runWithFakedTimers({ useFakeTimers: true }, async () => {
+				const { sessionHandler, agentHostService, chatAgentService, instantiationService } = createContribution(disposables);
+				const config = instantiationService.invokeFunction(accessor => accessor.get(IConfigurationService));
+				const notifications = instantiationService.invokeFunction(accessor => accessor.get(INotificationService));
+				const gate = new DeferredPromise<void>();
+				const saved: unknown[] = [];
+				const update = sinon.stub(config, 'updateValue').callsFake(async (key, value, target) => {
+					saved.push({ key, value, target });
+					await gate.p;
+					if (failSave) {
+						throw new Error('settings are read-only');
+					}
+				});
+				const notify = sinon.stub(notifications, 'error');
+				try {
+					const { turnPromise, collected, session, turnId, fire } = await startTurn(sessionHandler, agentHostService, chatAgentService, disposables);
+					fire({ type: 'chat/toolCallStart', session, turnId, toolCallId: 'tc-grant', toolName: 'read_file', displayName: 'Read File' } as ChatAction);
+					fire({
+						type: 'chat/toolCallReady', session, turnId, toolCallId: 'tc-grant',
+						invocationMessage: 'Read /outside', confirmationTitle: 'Add to user sandbox settings and retry?',
+						_meta: { 'vscode.sandboxPathGrant': { path: '/outside', access: 'read' } },
+						options: [
+							{ id: SAVE_SANDBOX_PATH, label: 'Allow', kind: ConfirmationOptionKind.Approve },
+							{ id: 'skip', label: 'Skip', kind: ConfirmationOptionKind.Deny },
+						],
+					} as ChatAction);
+					await timeout(10);
+					const invocation = collected.flat().find(p => p.kind === 'toolInvocation');
+					assert.ok(invocation?.kind === 'toolInvocation');
+					const confirmations = () => agentHostService.dispatchedActions.filter(a => a.action.type === 'chat/toolCallConfirmed');
+					IChatToolInvocation.confirmWith(invocation, { type: ToolConfirmKind.UserAction, selectedButton: SAVE_SANDBOX_PATH });
+					await timeout(10);
+					assert.deepStrictEqual({ saved, confirmations: confirmations().length }, {
+						saved: [{ key: AgentSandboxSettingId.AgentSandboxUserConfiguredPaths, value: { readonlyPaths: ['/outside'] }, target: ConfigurationTarget.USER_LOCAL }],
+						confirmations: 0,
+					});
+					gate.complete();
+					await timeout(10);
+					assert.deepStrictEqual({
+						confirmations: confirmations().map(item => (item.action as IToolCallConfirmedAction).selectedOptionId),
+						saved: confirmations().map(item => readAgentPermissionResponseMeta(item.action as IToolCallConfirmedAction).sandboxPathGrantSaved),
+						waiting: invocation.state.get().type === IChatToolInvocation.StateKind.WaitingForConfirmation,
+						errors: notify.callCount,
+					}, { confirmations: failSave ? [] : [SAVE_SANDBOX_PATH], saved: failSave ? [] : [true], waiting: failSave, errors: failSave ? 1 : 0 });
+					fire({ type: 'chat/turnComplete', endedAt: '2025-01-01T00:00:00.000Z', session, turnId } as ChatAction);
+					await turnPromise;
+				} finally {
+					update.restore();
+					notify.restore();
+				}
+			}));
+		}
+
 		test('pending confirmation refreshes risk assessment and options', () => runWithFakedTimers({ useFakeTimers: true }, async () => {
 			const { sessionHandler, agentHostService, chatAgentService } = createContribution(disposables);
 			const { turnPromise, collected, session, turnId, fire } = await startTurn(sessionHandler, agentHostService, chatAgentService, disposables);
@@ -13853,7 +13977,7 @@ suite('AgentHostChatContribution', () => {
 
 		test('setting gate prevents registration', () => runWithFakedTimers({ useFakeTimers: true }, async () => {
 			const { instantiationService } = createTestServices(disposables);
-			instantiationService.stub(IAgentHostEnablementService, { _serviceBrand: undefined, enabled: constObservable(false), managedSandboxEnforced: constObservable(false) });
+			instantiationService.stub(IAgentHostEnablementService, { _serviceBrand: undefined, enabled: constObservable(false), managedSandboxEnforced: constObservable(false), managedSandboxAllowsBypass: constObservable(false) } satisfies IAgentHostEnablementService);
 
 			const contribution = disposables.add(instantiationService.createInstance(AgentHostContribution));
 			// Contribution should exist but not have registered any agents
@@ -13891,7 +14015,7 @@ suite('AgentHostChatContribution', () => {
 			const { instantiationService, agentHostService, chatSessionContributions } = createTestServices(
 				disposables, undefined, undefined, undefined, undefined, false, undefined, { [ChatAIDisabledSettingId]: false });
 			const enabled = observableValue('agentHostEnabled', true);
-			instantiationService.stub(IAgentHostEnablementService, { _serviceBrand: undefined, enabled, managedSandboxEnforced: constObservable(false) });
+			instantiationService.stub(IAgentHostEnablementService, { _serviceBrand: undefined, enabled, managedSandboxEnforced: constObservable(false), managedSandboxAllowsBypass: constObservable(false) } satisfies IAgentHostEnablementService);
 			let progressStarts = 0;
 			instantiationService.stub(IProgressService, {
 				withProgress: <R,>(_options: IProgressNotificationOptions, task: (progress: IProgress<IProgressStep>) => Promise<R>) => {

@@ -67,6 +67,7 @@ const compilations = [
 	'extensions/gulp/tsconfig.json',
 	'extensions/html-language-features/client/tsconfig.json',
 	'extensions/html-language-features/server/tsconfig.json',
+	'extensions/hpc-studio/tsconfig.json',
 	'extensions/ipynb/tsconfig.json',
 	'extensions/jake/tsconfig.json',
 	'extensions/json-language-features/client/tsconfig.json',

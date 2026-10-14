@@ -1,0 +1,96 @@
+{
+	"name": "hpc-studio",
+	"displayName": "HPC Studio Core",
+	"description": "Core integration engine for HPC Studio: Sidecar supervisor, cluster connectivity, and simulation tools",
+	"version": "1.0.0",
+	"publisher": "hpc-studio",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.90.0"
+	},
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"extensionKind": [
+		"workspace",
+		"ui"
+	],
+	"main": "./out/extension",
+	"capabilities": {
+		"virtualWorkspaces": false,
+		"untrustedWorkspaces": {
+			"supported": true
+		}
+	},
+	"contributes": {
+		"commands": [
+			{
+				"command": "hpc-studio.startSidecar",
+				"title": "HPC Studio: Start Backend Server",
+				"category": "HPC Studio"
+			},
+			{
+				"command": "hpc-studio.stopSidecar",
+				"title": "HPC Studio: Stop Backend Server",
+				"category": "HPC Studio"
+			},
+			{
+				"command": "hpc-studio.restartSidecar",
+				"title": "HPC Studio: Restart Backend Server",
+				"category": "HPC Studio"
+			},
+			{
+				"command": "hpc-studio.checkStatus",
+				"title": "HPC Studio: Show Backend Status",
+				"category": "HPC Studio"
+			}
+		],
+		"configuration": {
+			"title": "HPC Studio",
+			"properties": {
+				"hpc-studio.pythonPath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to Python interpreter for HPC Studio backend. Leave empty to auto-detect virtual environments or system Python."
+				},
+				"hpc-studio.autoStartSidecar": {
+					"type": "boolean",
+					"default": true,
+					"description": "Automatically start the Python backend sidecar server when HPC Studio starts."
+				},
+				"hpc-studio.serverHost": {
+					"type": "string",
+					"default": "127.0.0.1",
+					"description": "Host address for HPC Studio backend server."
+				},
+				"hpc-studio.serverPort": {
+					"type": "number",
+					"default": 0,
+					"description": "Port number for HPC Studio backend server (0 for random dynamic port)."
+				},
+				"hpc-studio.logLevel": {
+					"type": "string",
+					"enum": [
+						"debug",
+						"info",
+						"warning",
+						"error"
+					],
+					"default": "info",
+					"description": "Log verbosity level for HPC Studio backend server."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"compile": "gulp compile-extension:hpc-studio",
+		"watch": "gulp watch-extension:hpc-studio"
+	},
+	"devDependencies": {
+		"@types/node": "24.x"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nosedimetuXD/HPC-Studio.git"
+	}
+}

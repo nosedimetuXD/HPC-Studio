@@ -396,7 +396,7 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 			this._evaluateAvailability();
 		}));
 
-		const builtinSessionProviders = [AgentSessionProviders.Local];
+		const builtinSessionProviders = [AgentSessionProviders.Local, AgentSessionProviders.AgentHostAntigravity];
 		const contributedSessionProviders = observableFromEvent(
 			this.onDidChangeAvailability,
 			() => Array.from(this._contributions.keys()).filter(key => this._contributionDisposables.has(key)),

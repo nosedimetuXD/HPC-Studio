@@ -279,7 +279,7 @@ export interface IAgentMaterializeChatEvent {
 	readonly project: IAgentSessionProjectInfo | undefined;
 }
 
-export type AgentProvider = string;
+export type AgentProvider = typeof CLAUDE_AGENT_PROVIDER_ID | typeof CODEX_AGENT_PROVIDER_ID | typeof COPILOT_CLI_AGENT_PROVIDER_ID | typeof ANTIGRAVITY_AGENT_PROVIDER_ID | string;
 
 export interface IAgentPluginUninstallRequest {
 	readonly name: string;
@@ -470,6 +470,9 @@ export const CODEX_AGENT_PROVIDER_ID = 'codex' as const;
 
 /** Well-known agent provider id for the Copilot CLI agent-host backend. */
 export const COPILOT_CLI_AGENT_PROVIDER_ID = 'copilotcli' as const;
+
+/** Well-known agent provider id for the Antigravity agent-host backend. */
+export const ANTIGRAVITY_AGENT_PROVIDER_ID = 'antigravity' as const;
 
 /**
  * Static capability facts an agent backend advertises about itself. Each flag

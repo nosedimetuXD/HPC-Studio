@@ -647,6 +647,10 @@ export function isVisibleEditorChatSessionType(
 		return false;
 	}
 
+	if (sessionType === SessionType.AgentHostAntigravity) {
+		return true;
+	}
+
 	const contribution = chatSessionsService.getChatSessionContribution(sessionType);
 	return !!contribution && !contribution.hideFromSessionTypePicker;
 }

@@ -31,6 +31,9 @@ export enum SessionTypeAvailability {
  * allowed to cross that activation boundary before it has published any models.
  */
 export function getSessionTypePickerAvailability(type: string, availability: SessionTypeAvailability, allowSignedOutWhenUsable: boolean, canInitializeOnSelection: boolean): SessionTypeAvailability {
+	if (type === SessionType.AgentHostAntigravity) {
+		return SessionTypeAvailability.Available;
+	}
 	if (canInitializeOnSelection) {
 		return SessionTypeAvailability.Available;
 	}
@@ -88,6 +91,9 @@ export function getSessionTypeAvailability(
 	type: string,
 	allowSignedOutWhenUsable = false,
 ): SessionTypeAvailability {
+	if (type === SessionType.AgentHostAntigravity) {
+		return SessionTypeAvailability.Available;
+	}
 	// Contribution loads asynchronously; while missing (e.g. during a reload) we
 	// can't judge the type, so stay selectable to avoid locking it prematurely.
 	if (!chatSessionsService.getChatSessionContribution(type)) {

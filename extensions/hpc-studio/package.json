@@ -467,11 +467,6 @@
 				{
 					"id": "hpc-studio.sftpExplorerView",
 					"name": "Cluster File Transfer (SFTP)"
-				},
-				{
-					"id": "hpc-studio.agentChatView",
-					"name": "HPC AI Assistant",
-					"type": "webview"
 				}
 			]
 		}

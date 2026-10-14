@@ -11,7 +11,6 @@ import { Structure3DEditorProvider } from './editors/structure3dEditor';
 import { ClustersTreeDataProvider, ClusterTreeItem } from './views/clustersView';
 import { SlurmQueueTreeDataProvider, SlurmJobTreeItem } from './views/slurmQueueView';
 import { SftpExplorerTreeDataProvider, SftpTreeItem } from './views/sftpExplorerView';
-import { AgentChatWebviewViewProvider } from './views/agentChatView';
 
 let supervisor: SidecarSupervisor | null = null;
 let client: BackendClient | null = null;
@@ -22,7 +21,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 	clustersProvider: ClustersTreeDataProvider;
 	slurmQueueProvider: SlurmQueueTreeDataProvider;
 	sftpExplorerProvider: SftpExplorerTreeDataProvider;
-	agentChatProvider: AgentChatWebviewViewProvider;
 }> {
 	supervisor = new SidecarSupervisor();
 	context.subscriptions.push(supervisor);
@@ -214,12 +212,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 		vscode.window.registerTreeDataProvider('hpc-studio.sftpExplorerView', sftpExplorerProvider)
 	);
 
-	// Register HPC AI Assistant Webview Provider
-	const agentChatProvider = new AgentChatWebviewViewProvider(context.extensionUri, () => client);
-	context.subscriptions.push(
-		vscode.window.registerWebviewViewProvider(AgentChatWebviewViewProvider.viewType, agentChatProvider)
-	);
-
 	// Register Cluster Commands
 	context.subscriptions.push(
 		vscode.commands.registerCommand('hpc-studio.refreshClusters', () => {
@@ -312,7 +304,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 		clustersProvider,
 		slurmQueueProvider,
 		sftpExplorerProvider,
-		agentChatProvider,
 	};
 }
 

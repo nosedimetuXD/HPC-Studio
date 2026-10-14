@@ -55,7 +55,7 @@ export interface ISessionTypeItem {
 const firstPartyCategory = { label: localize('chat.sessionTarget.category.agent', "Agent Types"), order: 1 };
 const otherCategory = { label: localize('chat.sessionTarget.category.other', "Other"), order: 2 };
 
-type CopilotHarnessTargetCategory = 'copilot' | 'local' | 'claude' | 'codex' | 'cloud' | 'other';
+type CopilotHarnessTargetCategory = 'copilot' | 'local' | 'claude' | 'codex' | 'cloud' | 'antigravity' | 'other';
 
 type CopilotHarnessTargetChangedEvent = {
 	mode: CopilotHarnessIntroductionMode;
@@ -81,6 +81,9 @@ type CopilotHarnessTargetChangedClassification = {
 
 function getCopilotHarnessTargetCategory(target: AgentSessionTarget, chatSessionsService: IChatSessionsService): CopilotHarnessTargetCategory {
 	const provider = chatSessionsService.getChatSessionContribution(target)?.agentHostProviderId;
+	if (target === AgentSessionProviders.AgentHostAntigravity || provider === 'antigravity') {
+		return 'antigravity';
+	}
 	if (target === AgentSessionProviders.AgentHostCopilot || target === AgentSessionProviders.Background || provider === SessionType.CopilotCLI || provider === 'copilot') {
 		return 'copilot';
 	}
@@ -371,11 +374,18 @@ export class SessionTypePickerActionItem extends ChatInputPickerActionViewItem {
 			commandId: `workbench.action.chat.openNewChatSessionInPlace.${AgentSessionProviders.Local}`,
 		};
 
-		const allAgentSessionItems: ISessionTypeItem[] = [localSessionItem];
+		const antigravitySessionItem: ISessionTypeItem = {
+			type: AgentSessionProviders.AgentHostAntigravity,
+			label: getAgentSessionProviderName(AgentSessionProviders.AgentHostAntigravity),
+			hoverDescription: getAgentSessionProviderDescription(AgentSessionProviders.AgentHostAntigravity),
+			commandId: `workbench.action.chat.openNewChatSessionInPlace.${AgentSessionProviders.AgentHostAntigravity}`,
+		};
+
+		const allAgentSessionItems: ISessionTypeItem[] = [localSessionItem, antigravitySessionItem];
 
 		const contributions = this.chatSessionsService.getAllChatSessionContributions();
 		for (const contribution of contributions) {
-			if (contribution.hideFromSessionTypePicker) {
+			if (contribution.hideFromSessionTypePicker || contribution.type === AgentSessionProviders.AgentHostAntigravity) {
 				continue;
 			}
 			// TODO: Remove hardcoded providers from core
@@ -431,12 +441,15 @@ export class SessionTypePickerActionItem extends ChatInputPickerActionViewItem {
 	}
 
 	protected _isVisible(type: AgentSessionTarget): boolean {
+		if (type === AgentSessionProviders.AgentHostAntigravity) {
+			return true;
+		}
 		return isVisibleEditorChatSessionType(type, this.configurationService, this.chatSessionsService, this.workspaceContextService.getWorkspace(), this.agentHostEnablementService.managedSandboxEnforced.get(), this.agentHostEnablementService.enabled.get(), requiresCopilotAgentHost(this.managedSettingsService, this.configurationService));
 	}
 
 	protected _isSessionTypeEnabled(type: AgentSessionTarget): boolean {
-		if (type === AgentSessionProviders.Local) {
-			return true; // Local is always available
+		if (type === AgentSessionProviders.Local || type === AgentSessionProviders.AgentHostAntigravity) {
+			return true; // Local and Antigravity are always available
 		}
 		// Disable non-local session types when their provider is not registered yet
 		return !!this.chatSessionsService.getChatSessionContribution(type);

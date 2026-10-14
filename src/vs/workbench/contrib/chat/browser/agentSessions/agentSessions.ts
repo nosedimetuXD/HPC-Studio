@@ -24,6 +24,7 @@ export enum AgentSessionProviders {
 	AgentHostCopilot = SessionType.AgentHostCopilot,
 	AgentHostClaude = SessionType.AgentHostClaude,
 	AgentHostCodex = SessionType.AgentHostCodex,
+	AgentHostAntigravity = SessionType.AgentHostAntigravity,
 }
 
 /**
@@ -37,7 +38,8 @@ export type AgentSessionTarget = AgentSessionProviders | (string & {});
 export function isBuiltInAgentSessionProvider(provider: AgentSessionTarget): boolean {
 	return provider === AgentSessionProviders.Local ||
 		provider === AgentSessionProviders.Background ||
-		provider === AgentSessionProviders.Cloud;
+		provider === AgentSessionProviders.Cloud ||
+		provider === AgentSessionProviders.AgentHostAntigravity;
 }
 
 export function getAgentSessionProvider(sessionResource: URI | string): AgentSessionProviders | undefined {
@@ -50,6 +52,7 @@ export function getAgentSessionProvider(sessionResource: URI | string): AgentSes
 		case AgentSessionProviders.AgentHostCopilot:
 		case AgentSessionProviders.AgentHostClaude:
 		case AgentSessionProviders.AgentHostCodex:
+		case AgentSessionProviders.AgentHostAntigravity:
 			return type;
 		default:
 			return undefined;
@@ -73,6 +76,8 @@ export function getAgentSessionProviderName(provider: AgentSessionTarget): strin
 			return 'Growth';
 		case AgentSessionProviders.AgentHostCopilot:
 			return localize('chat.session.providerLabel.agentHostCopilot', "Copilot");
+		case AgentSessionProviders.AgentHostAntigravity:
+			return localize('chat.session.providerLabel.agentHostAntigravity', "Antigravity");
 		default:
 			return provider;
 	}
@@ -95,6 +100,8 @@ export function getAgentSessionProviderIcon(provider: AgentSessionTarget): Theme
 			return Codicon.lightbulb;
 		case AgentSessionProviders.AgentHostCopilot:
 			return Codicon.copilot;
+		case AgentSessionProviders.AgentHostAntigravity:
+			return Codicon.sparkle;
 		default:
 			return Codicon.extensions;
 	}
@@ -106,6 +113,7 @@ export function isFirstPartyAgentSessionProvider(provider: AgentSessionTarget): 
 		case AgentSessionProviders.Background:
 		case AgentSessionProviders.Cloud:
 		case AgentSessionProviders.AgentHostCopilot:
+		case AgentSessionProviders.AgentHostAntigravity:
 			return true;
 		case AgentSessionProviders.AgentHostClaude:
 		case AgentSessionProviders.Codex:
@@ -162,6 +170,7 @@ export function getAgentCanContinueIn(provider: AgentSessionTarget): boolean {
 		case AgentSessionProviders.Background:
 		case AgentSessionProviders.Cloud:
 		case AgentSessionProviders.AgentHostCopilot:
+		case AgentSessionProviders.AgentHostAntigravity:
 			return true;
 		case AgentSessionProviders.Codex:
 		case AgentSessionProviders.Growth:
@@ -189,6 +198,8 @@ export function getAgentSessionProviderDescription(provider: AgentSessionTarget)
 			return localize('chat.session.providerDescription.growth', "Learn about Copilot features.");
 		case AgentSessionProviders.AgentHostCopilot:
 			return localize('chat.session.providerDescription.agentHostCopilot', "Run tasks using the Copilot SDK, which is the agent experience shared consistently across GitHub Copilot products. The agent works in the Agent Host, which lets sessions continue in the background, independently of an editor window.");
+		case AgentSessionProviders.AgentHostAntigravity:
+			return localize('chat.session.providerDescription.agentHostAntigravity', "Delegate tasks to the Antigravity Agent using the local agy CLI runtime and Gemini models.");
 		default:
 			return '';
 	}

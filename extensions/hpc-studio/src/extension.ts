@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { SidecarSupervisor, SidecarStatus } from './sidecar';
 import { BackendClient } from './client';
 import { HPCStatusBarItem } from './statusBar';
+import { Structure3DEditorProvider } from './editors/structure3dEditor';
 
 let supervisor: SidecarSupervisor | null = null;
 let client: BackendClient | null = null;
@@ -135,6 +136,54 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 	context.subscriptions.push(
 		vscode.commands.registerCommand('hpc-studio.showQuickMenu', () => {
 			return statusBar.showQuickMenu();
+		})
+	);
+
+	// Register 3D Structure Viewer Custom Editor
+	context.subscriptions.push(
+		Structure3DEditorProvider.register(context)
+	);
+
+	// Register 3D Structure Viewer commands
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.openIn3DViewer', async (uri?: vscode.Uri) => {
+			const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+			if (targetUri) {
+				await vscode.commands.executeCommand(
+					'vscode.openWith',
+					targetUri,
+					Structure3DEditorProvider.viewType,
+					vscode.ViewColumn.Active
+				);
+			}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.open3DSideBySide', async (uri?: vscode.Uri) => {
+			const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+			if (targetUri) {
+				await vscode.commands.executeCommand(
+					'vscode.openWith',
+					targetUri,
+					Structure3DEditorProvider.viewType,
+					vscode.ViewColumn.Beside
+				);
+			}
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.reopenAsText', async (uri?: vscode.Uri) => {
+			const targetUri = uri || vscode.window.activeTextEditor?.document.uri;
+			if (targetUri) {
+				await vscode.commands.executeCommand(
+					'vscode.openWith',
+					targetUri,
+					'default',
+					vscode.ViewColumn.Active
+				);
+			}
 		})
 	);
 

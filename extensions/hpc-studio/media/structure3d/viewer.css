@@ -1,0 +1,289 @@
+/* Structure 3D Viewer CSS */
+:root {
+	--bg-primary: var(--vscode-editor-background, #1e1e1e);
+	--text-primary: var(--vscode-editor-foreground, #cccccc);
+	--accent-color: var(--vscode-button-background, #0e639c);
+	--accent-hover: var(--vscode-button-hoverBackground, #1177bb);
+	--toolbar-bg: var(--vscode-editorWidget-background, rgba(30, 30, 30, 0.85));
+	--toolbar-border: var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.12));
+	--card-bg: var(--vscode-editorHoverWidget-background, rgba(37, 37, 38, 0.95));
+	--card-border: var(--vscode-editorHoverWidget-border, #454545);
+	--badge-bg: var(--vscode-badge-background, #4d4d4d);
+	--badge-fg: var(--vscode-badge-foreground, #ffffff);
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	user-select: none;
+}
+
+html, body {
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background-color: var(--bg-primary);
+	color: var(--text-primary);
+	font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
+	font-size: var(--vscode-font-size, 13px);
+}
+
+#viewport-container {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	outline: none;
+}
+
+#canvas-3d {
+	width: 100%;
+	height: 100%;
+	display: block;
+}
+
+/* Floating Toolbar */
+.toolbar {
+	position: absolute;
+	top: 12px;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	background: var(--toolbar-bg);
+	border: 1px solid var(--toolbar-border);
+	border-radius: 8px;
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+	z-index: 100;
+	max-width: 95vw;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.toolbar-title {
+	font-weight: 600;
+	padding: 0 8px 0 4px;
+	border-right: 1px solid var(--toolbar-border);
+	color: var(--vscode-foreground, #cccccc);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+}
+
+.toolbar-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	background: var(--vscode-button-secondaryBackground, #3a3d41);
+	color: var(--vscode-button-secondaryForeground, #ffffff);
+	border: 1px solid transparent;
+	padding: 5px 9px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 11px;
+	font-weight: 500;
+	transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+	background: var(--vscode-button-secondaryHoverBackground, #45494e);
+}
+
+.toolbar-btn.active {
+	background: var(--accent-color);
+	color: #ffffff;
+	border-color: rgba(255, 255, 255, 0.25);
+}
+
+.toolbar-btn.primary {
+	background: var(--accent-color);
+	color: #ffffff;
+}
+
+.toolbar-btn.primary:hover {
+	background: var(--accent-hover);
+}
+
+.toolbar-sep {
+	width: 1px;
+	height: 18px;
+	background: var(--toolbar-border);
+	margin: 0 2px;
+}
+
+/* Info Cards / Overlay */
+.overlay-panel {
+	position: absolute;
+	background: var(--card-bg);
+	border: 1px solid var(--card-border);
+	border-radius: 6px;
+	padding: 10px 14px;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+	z-index: 90;
+	font-size: 12px;
+	pointer-events: auto;
+}
+
+#stats-panel {
+	bottom: 14px;
+	left: 14px;
+	max-width: 320px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.stats-title {
+	font-weight: 600;
+	font-size: 13px;
+	margin-bottom: 2px;
+	color: var(--vscode-editorGroupHeader-tabsBorder, #007acc);
+}
+
+.stats-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	color: var(--vscode-descriptionForeground, #999999);
+}
+
+.stats-value {
+	color: var(--text-primary);
+	font-family: var(--vscode-editor-font-family, monospace);
+}
+
+#atom-card {
+	bottom: 14px;
+	right: 14px;
+	width: 280px;
+	display: none;
+}
+
+#atom-card.visible {
+	display: block;
+}
+
+.card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+	padding-bottom: 6px;
+	border-bottom: 1px solid var(--card-border);
+}
+
+.card-title {
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.element-pill {
+	display: inline-block;
+	padding: 2px 7px;
+	border-radius: 12px;
+	font-weight: bold;
+	font-size: 11px;
+	color: #ffffff;
+}
+
+.card-close {
+	cursor: pointer;
+	color: var(--vscode-descriptionForeground, #999999);
+	font-size: 14px;
+}
+
+.card-close:hover {
+	color: var(--text-primary);
+}
+
+.card-body {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+/* Distance Measurement Banner */
+#distance-banner {
+	position: absolute;
+	top: 60px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: rgba(14, 99, 156, 0.9);
+	color: #ffffff;
+	padding: 6px 14px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+	z-index: 95;
+	display: none;
+	animation: fadeIn 0.2s ease-in;
+}
+
+#distance-banner.visible {
+	display: block;
+}
+
+@keyframes fadeIn {
+	from { opacity: 0; transform: translate(-50%, -6px); }
+	to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Atom 2D/3D Label Sprites */
+.atom-label-tag {
+	position: absolute;
+	transform: translate(-50%, -100%);
+	background: rgba(0, 0, 0, 0.7);
+	color: #fff;
+	padding: 1px 4px;
+	border-radius: 3px;
+	font-size: 10px;
+	font-family: var(--vscode-editor-font-family, monospace);
+	pointer-events: none;
+	white-space: nowrap;
+}
+
+/* Empty / Error state */
+#loading-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: var(--bg-primary);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	z-index: 200;
+	opacity: 1;
+	transition: opacity 0.3s ease;
+}
+
+#loading-overlay.hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.spinner {
+	width: 32px;
+	height: 32px;
+	border: 3px solid rgba(255, 255, 255, 0.2);
+	border-top-color: var(--accent-color);
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}

@@ -47,6 +47,24 @@
 				"command": "hpc-studio.checkStatus",
 				"title": "HPC Studio: Show Backend Status",
 				"category": "HPC Studio"
+			},
+			{
+				"command": "hpc-studio.openIn3DViewer",
+				"title": "HPC Studio: Open in 3D Structure Viewer",
+				"category": "HPC Studio",
+				"icon": "$(preview)"
+			},
+			{
+				"command": "hpc-studio.open3DSideBySide",
+				"title": "HPC Studio: Open 3D View to the Side",
+				"category": "HPC Studio",
+				"icon": "$(split-horizontal)"
+			},
+			{
+				"command": "hpc-studio.reopenAsText",
+				"title": "HPC Studio: Reopen as Text",
+				"category": "HPC Studio",
+				"icon": "$(go-to-file)"
 			}
 		],
 		"configuration": {
@@ -201,7 +219,55 @@
 				"language": "slurm",
 				"path": "./snippets/slurm.code-snippets"
 			}
-		]
+		],
+		"customEditors": [
+			{
+				"viewType": "hpc-studio.structure3dViewer",
+				"displayName": "HPC Studio 3D Structure Viewer",
+				"selector": [
+					{
+						"filenamePattern": "*.cif"
+					},
+					{
+						"filenamePattern": "*.xyz"
+					}
+				],
+				"priority": "default"
+			}
+		],
+		"menus": {
+			"editor/title": [
+				{
+					"command": "hpc-studio.openIn3DViewer",
+					"when": "editorFocus && (resourceExtname == '.cif' || resourceExtname == '.xyz')",
+					"group": "navigation@1"
+				},
+				{
+					"command": "hpc-studio.open3DSideBySide",
+					"when": "editorFocus && (resourceExtname == '.cif' || resourceExtname == '.xyz')",
+					"group": "navigation@2"
+				},
+				{
+					"command": "hpc-studio.reopenAsText",
+					"when": "activeCustomEditorId == 'hpc-studio.structure3dViewer'",
+					"group": "navigation@3"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "hpc-studio.openIn3DViewer",
+					"when": "resourceExtname == '.cif' || resourceExtname == '.xyz'"
+				},
+				{
+					"command": "hpc-studio.open3DSideBySide",
+					"when": "resourceExtname == '.cif' || resourceExtname == '.xyz'"
+				},
+				{
+					"command": "hpc-studio.reopenAsText",
+					"when": "activeCustomEditorId == 'hpc-studio.structure3dViewer'"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"compile": "gulp compile-extension:hpc-studio",
@@ -213,5 +279,8 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/nosedimetuXD/HPC-Studio.git"
+	},
+	"dependencies": {
+		"three": "^0.186.1"
 	}
 }

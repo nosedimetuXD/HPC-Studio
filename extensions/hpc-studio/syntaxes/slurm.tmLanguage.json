@@ -1,0 +1,101 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Slurm",
+	"scopeName": "source.slurm",
+	"patterns": [
+		{ "include": "#sbatch-directive" },
+		{ "include": "#slurm-commands" },
+		{ "include": "#hpc-modules" },
+		{ "include": "#slurm-env-vars" },
+		{ "include": "source.shell" }
+	],
+	"repository": {
+		"sbatch-directive": {
+			"begin": "^(#SBATCH)\\b",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.directive.sbatch.slurm" }
+			},
+			"end": "$",
+			"patterns": [
+				{
+					"match": "(--job-name|-J|--partition|-p|--nodes|-N|--ntasks|-n|--ntasks-per-node|--cpus-per-task|-c|--time|-t|--mem|--mem-per-cpu|--mem-per-gpu|--gres|--gpus|--gpus-per-node|--gpu-bind|--output|-o|--error|-e|--account|-A|--mail-type|--mail-user|--qos|-q|--array|-a|--constraint|-C|--exclusive|--export|--signal|--chdir|-D|--parsable|--requeue|--hint|--distribution|-m|--reservation)\\b(?:(=))?",
+					"captures": {
+						"1": { "name": "variable.parameter.option.sbatch.slurm entity.other.attribute-name.slurm" },
+						"2": { "name": "punctuation.separator.key-value.slurm" }
+					}
+				},
+				{
+					"match": "%[jxaNuAt%]",
+					"name": "variable.language.placeholder.slurm"
+				},
+				{
+					"match": "\\b(NONE|BEGIN|END|FAIL|REQUEUE|ALL|STAGE_OUT|TIME_LIMIT|ARRAY_TASKS)\\b",
+					"name": "constant.language.mail-type.slurm"
+				},
+				{
+					"match": "\\b(?:(\\d+-)?(?:\\d{1,2}:\\d{2}(?::\\d{2})?)|\\d+)\\b",
+					"name": "constant.numeric.time.slurm"
+				},
+				{
+					"match": "\\b\\d+[KkMmGgTt][Bb]?\\b",
+					"name": "constant.numeric.memory.slurm"
+				},
+				{
+					"match": "\\b(gpu|shard|mps):[a-zA-Z0-9_]+:\\d+\\b|\\b(gpu|shard|mps):\\d+\\b",
+					"name": "support.constant.gres.slurm"
+				},
+				{
+					"name": "string.quoted.double.slurm",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{ "match": "%[jxaNuAt%]", "name": "variable.language.placeholder.slurm" }
+					]
+				},
+				{
+					"name": "string.quoted.single.slurm",
+					"begin": "'",
+					"end": "'"
+				},
+				{
+					"name": "comment.line.slurm",
+					"match": "(#).*$",
+					"captures": {
+						"1": { "name": "punctuation.definition.comment.slurm" }
+					}
+				}
+			]
+		},
+		"slurm-commands": {
+			"patterns": [
+				{
+					"match": "\\b(srun|sbatch|scancel|squeue|sinfo|sacct|salloc|scontrol|sattach|sbcast|sprio|sshare|sstat|strigger)\\b",
+					"name": "support.function.slurm-cli.slurm"
+				},
+				{
+					"match": "\\b(mpirun|mpiexec|oshrun)\\b",
+					"name": "support.function.mpi.slurm"
+				}
+			]
+		},
+		"hpc-modules": {
+			"patterns": [
+				{
+					"match": "\\b(module)\\s+(load|unload|purge|list|avail|switch|swap|use|initadd|initrm)\\b",
+					"captures": {
+						"1": { "name": "support.function.module.slurm" },
+						"2": { "name": "keyword.operator.module-subcommand.slurm" }
+					}
+				}
+			]
+		},
+		"slurm-env-vars": {
+			"patterns": [
+				{
+					"match": "\\$(?:SLURM_[A-Za-z0-9_]+|\\{SLURM_[A-Za-z0-9_]+\\})",
+					"name": "variable.language.slurm.slurm"
+				}
+			]
+		}
+	}
+}

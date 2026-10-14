@@ -1,0 +1,77 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Cartesian Coordinate File",
+	"scopeName": "source.xyz",
+	"patterns": [
+		{ "include": "#atom-count" },
+		{ "include": "#atom-line" },
+		{ "include": "#comment-line" },
+		{ "include": "#general" }
+	],
+	"repository": {
+		"atom-count": {
+			"patterns": [
+				{
+					"match": "^\\s*(\\d+)\\s*$",
+					"captures": {
+						"1": { "name": "constant.numeric.atom-count.xyz entity.name.section.xyz markup.bold.xyz" }
+					}
+				}
+			]
+		},
+		"atom-line": {
+			"patterns": [
+				{
+					"match": "^\\s*\\b(H|He|Li|Be|B|C|N|O|F|Ne|Na|Mg|Al|Si|P|S|Cl|Ar|K|Ca|Sc|Ti|V|Cr|Mn|Fe|Co|Ni|Cu|Zn|Ga|Ge|As|Se|Br|Kr|Rb|Sr|Y|Zr|Nb|Mo|Tc|Ru|Rh|Pd|Ag|Cd|In|Sn|Sb|Te|I|Xe|Cs|Ba|La|Ce|Pr|Nd|Pm|Sm|Eu|Gd|Tb|Dy|Ho|Er|Tm|Yb|Lu|Hf|Ta|W|Re|Os|Ir|Pt|Au|Hg|Tl|Pb|Bi|Po|At|Rn|Fr|Ra|Ac|Th|Pa|U|Np|Pu|Am|Cm|Bk|Cf|Es|Fm|Md|No|Lr|Rf|Db|Sg|Bh|Hs|Mt|Ds|Rg|Cn|Nh|Fl|Mc|Lv|Ts|Og)\\b\\s+([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\\s+([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)(?:\\s+(.*))?$",
+					"captures": {
+						"1": { "name": "entity.name.type.element.xyz markup.bold.xyz" },
+						"2": { "name": "constant.numeric.float.coordinate.x.xyz" },
+						"3": { "name": "constant.numeric.float.coordinate.y.xyz" },
+						"4": { "name": "constant.numeric.float.coordinate.z.xyz" },
+						"5": { "name": "variable.other.extra-data.xyz" }
+					}
+				}
+			]
+		},
+		"comment-line": {
+			"patterns": [
+				{
+					"match": "(?i)\\b(Lattice|Properties|energy|time|pbc)\\s*(=)",
+					"captures": {
+						"1": { "name": "support.type.property.xyz" },
+						"2": { "name": "punctuation.separator.key-value.xyz" }
+					}
+				},
+				{
+					"name": "comment.line.xyz",
+					"match": "(#).*$",
+					"captures": {
+						"1": { "name": "punctuation.definition.comment.xyz" }
+					}
+				}
+			]
+		},
+		"general": {
+			"patterns": [
+				{
+					"name": "string.quoted.double.xyz",
+					"begin": "\"",
+					"end": "\""
+				},
+				{
+					"name": "string.quoted.single.xyz",
+					"begin": "'",
+					"end": "'"
+				},
+				{
+					"name": "constant.numeric.float.xyz",
+					"match": "[-+]?\\b[0-9]*\\.[0-9]+(?:[eE][-+]?[0-9]+)?\\b"
+				},
+				{
+					"name": "constant.numeric.integer.xyz",
+					"match": "[-+]?\\b[0-9]+\\b"
+				}
+			]
+		}
+	}
+}

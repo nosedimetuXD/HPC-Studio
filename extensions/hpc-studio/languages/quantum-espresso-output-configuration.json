@@ -1,0 +1,27 @@
+{
+	"comments": {
+		"lineComment": "!"
+	},
+	"brackets": [
+		["(", ")"],
+		["[", "]"]
+	],
+	"autoClosingPairs": [
+		{ "open": "'", "close": "'" },
+		{ "open": "\"", "close": "\"" },
+		{ "open": "(", "close": ")" },
+		{ "open": "[", "close": "]" }
+	],
+	"surroundingPairs": [
+		["'", "'"],
+		["\"", "\""],
+		["(", ")"],
+		["[", "]"]
+	],
+	"folding": {
+		"markers": {
+			"start": "^\\s*(Program\\s+PWSCF|iteration\\s*#|Entering Dynamics|Forces acting on atoms|total\\s+stress|crystal axes:|reciprocal axes:)",
+			"end": "^\\s*(End of|JOB DONE|bfgs converged)"
+		}
+	}
+}

@@ -1,0 +1,150 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Crystallographic Information File",
+	"scopeName": "source.cif",
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#blocks" },
+		{ "include": "#loop" },
+		{ "include": "#tags" },
+		{ "include": "#strings" },
+		{ "include": "#numbers" },
+		{ "include": "#special-values" }
+	],
+	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.number-sign.cif",
+					"match": "(#).*$",
+					"captures": {
+						"1": { "name": "punctuation.definition.comment.cif" }
+					}
+				}
+			]
+		},
+		"blocks": {
+			"patterns": [
+				{
+					"match": "^\\s*(data_)([A-Za-z0-9_\\-\\.]+)",
+					"captures": {
+						"1": { "name": "keyword.control.data.cif" },
+						"2": { "name": "entity.name.section.data-block.cif" }
+					}
+				},
+				{
+					"match": "^\\s*(save_)([A-Za-z0-9_\\-\\.]+)",
+					"captures": {
+						"1": { "name": "keyword.control.save.cif" },
+						"2": { "name": "entity.name.section.save-frame.cif" }
+					}
+				},
+				{
+					"match": "^\\s*(save_)\\s*$",
+					"captures": {
+						"1": { "name": "keyword.control.save.end.cif" }
+					}
+				},
+				{
+					"match": "\\b(global_)\\b",
+					"name": "keyword.control.global.cif"
+				},
+				{
+					"match": "\\b(stop_)\\b",
+					"name": "keyword.control.stop.cif"
+				}
+			]
+		},
+		"loop": {
+			"patterns": [
+				{
+					"match": "^\\s*(loop_)\\b",
+					"captures": {
+						"1": { "name": "keyword.control.loop.cif" }
+					}
+				}
+			]
+		},
+		"tags": {
+			"patterns": [
+				{
+					"match": "(_cell_[A-Za-z0-9_]+)",
+					"name": "variable.other.property.cell.cif"
+				},
+				{
+					"match": "(_symmetry_[A-Za-z0-9_]+|_space_group_[A-Za-z0-9_]+)",
+					"name": "variable.other.property.symmetry.cif"
+				},
+				{
+					"match": "(_atom_site_[A-Za-z0-9_]+)",
+					"name": "variable.other.property.atom-site.cif"
+				},
+				{
+					"match": "(_chemical_[A-Za-z0-9_]+)",
+					"name": "variable.other.property.chemical.cif"
+				},
+				{
+					"match": "(_audit_[A-Za-z0-9_]+|_journal_[A-Za-z0-9_]+)",
+					"name": "variable.other.property.metadata.cif"
+				},
+				{
+					"match": "(_[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)?)",
+					"name": "variable.other.property.cif"
+				}
+			]
+		},
+		"strings": {
+			"patterns": [
+				{
+					"name": "string.quoted.single.cif",
+					"begin": "'",
+					"end": "'"
+				},
+				{
+					"name": "string.quoted.double.cif",
+					"begin": "\"",
+					"end": "\""
+				},
+				{
+					"name": "string.unquoted.multiline.cif",
+					"begin": "^;",
+					"end": "^;",
+					"patterns": [
+						{ "match": ".*" }
+					]
+				}
+			]
+		},
+		"numbers": {
+			"patterns": [
+				{
+					"match": "([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)(\\([0-9]+\\))",
+					"captures": {
+						"1": { "name": "constant.numeric.float.cif" },
+						"2": { "name": "support.constant.uncertainty.cif markup.italic.cif" }
+					}
+				},
+				{
+					"name": "constant.numeric.float.cif",
+					"match": "[-+]?\\b[0-9]+\\.[0-9]+(?:[eE][-+]?[0-9]+)?\\b|[-+]?\\b[0-9]*\\.[0-9]+(?:[eE][-+]?[0-9]+)?\\b"
+				},
+				{
+					"name": "constant.numeric.integer.cif",
+					"match": "[-+]?\\b[0-9]+\\b"
+				}
+			]
+		},
+		"special-values": {
+			"patterns": [
+				{
+					"match": "(?<=\\s)(\\?)(?=\\s|$)|^(\\?)(?=\\s|$)",
+					"name": "constant.language.unknown.cif"
+				},
+				{
+					"match": "(?<=\\s)(\\.)(?=\\s|$)|^(\\.)(?=\\s|$)",
+					"name": "constant.language.not-applicable.cif"
+				}
+			]
+		}
+	}
+}

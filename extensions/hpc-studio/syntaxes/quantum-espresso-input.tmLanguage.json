@@ -1,0 +1,140 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Quantum ESPRESSO Input",
+	"scopeName": "source.qe-in",
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#namelists" },
+		{ "include": "#cards" },
+		{ "include": "#parameters" },
+		{ "include": "#values" },
+		{ "include": "#elements" },
+		{ "include": "#filenames" }
+	],
+	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.exclamation.qe-in",
+					"match": "(!).*$",
+					"captures": {
+						"1": { "name": "punctuation.definition.comment.qe-in" }
+					}
+				}
+			]
+		},
+		"namelists": {
+			"patterns": [
+				{
+					"match": "(&)([A-Za-z0-9_]+)",
+					"captures": {
+						"1": { "name": "punctuation.definition.namelist.qe-in" },
+						"2": { "name": "keyword.control.namelist.qe-in entity.name.section.qe-in" }
+					}
+				},
+				{
+					"match": "^\\s*(/)\\s*$",
+					"captures": {
+						"1": { "name": "keyword.control.namelist.end.qe-in punctuation.terminator.namelist.qe-in" }
+					}
+				},
+				{
+					"match": "\\s+(/)\\s*$",
+					"captures": {
+						"1": { "name": "keyword.control.namelist.end.qe-in punctuation.terminator.namelist.qe-in" }
+					}
+				}
+			]
+		},
+		"cards": {
+			"patterns": [
+				{
+					"match": "(?i)\\b(ATOMIC_SPECIES|ATOMIC_POSITIONS|K_POINTS|CELL_PARAMETERS|CONSTRAINTS|OCCUPATIONS|ATOMIC_FORCES|ATOMIC_VELOCITIES|HUBBARD)\\b(?:\\s*(\\()\\s*([a-zA-Z0-9_/]+)\\s*(\\)))?",
+					"captures": {
+						"1": { "name": "keyword.control.card.qe-in entity.name.type.card.qe-in" },
+						"2": { "name": "punctuation.definition.parameters.begin.qe-in" },
+						"3": { "name": "storage.modifier.card-option.qe-in variable.parameter.card-option.qe-in" },
+						"4": { "name": "punctuation.definition.parameters.end.qe-in" }
+					}
+				}
+			]
+		},
+		"parameters": {
+			"patterns": [
+				{
+					"match": "(?i)\\b(calculation|restart_mode|outdir|prefix|pseudo_dir|title|verbosity|iprint|tstress|tprnfor|dt|max_seconds|disk_io|wf_collect|forc_conv_thr|etot_conv_thr|nstep|ibrav|celldm|nat|ntyp|ecutwfc|ecutrho|ecutfock|occupations|smearing|degauss|nbnd|starting_magnetization|lspinorb|noncolin|nosym|noinv|tot_charge|tot_magnetization|A|B|C|cosAB|cosAC|cosBC|conv_thr|mixing_beta|mixing_mode|mixing_ndim|electron_maxstep|diagonalization|startingpot|startingwfc|diago_david_ndim|diago_cg_maxiter|ion_dynamics|ion_positions|pot_extrapolation|wfc_extrapolation|remove_rigid_rot|upscale|trust_radius_max|trust_radius_min|cell_dynamics|press|wmass|cell_factor|press_conv_thr|cell_dofree)(?:\\((\\d+)\\))?\\s*(=)",
+					"captures": {
+						"1": { "name": "variable.parameter.namelist.qe-in support.variable.qe-in" },
+						"2": { "name": "constant.numeric.integer.index.qe-in" },
+						"3": { "name": "punctuation.separator.key-value.qe-in keyword.operator.assignment.qe-in" }
+					}
+				},
+				{
+					"match": "([A-Za-z0-9_]+(?:\\(\\d+\\))?)\\s*(=)",
+					"captures": {
+						"1": { "name": "variable.other.property.qe-in" },
+						"2": { "name": "punctuation.separator.key-value.qe-in keyword.operator.assignment.qe-in" }
+					}
+				}
+			]
+		},
+		"values": {
+			"patterns": [
+				{
+					"name": "constant.language.boolean.qe-in",
+					"match": "(?i)\\.(true|false)\\."
+				},
+				{
+					"name": "string.quoted.single.qe-in",
+					"begin": "'",
+					"end": "'",
+					"patterns": [
+						{
+							"name": "constant.character.escape.qe-in",
+							"match": "''"
+						}
+					]
+				},
+				{
+					"name": "string.quoted.double.qe-in",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{
+							"name": "constant.character.escape.qe-in",
+							"match": "\\\\."
+						}
+					]
+				},
+				{
+					"name": "constant.numeric.float.qe-in",
+					"match": "[-+]?\\b[0-9]+\\.[0-9]*([dDeE][-+]?[0-9]+)?\\b|[-+]?\\b[0-9]*\\.[0-9]+([dDeE][-+]?[0-9]+)?\\b|[-+]?\\b[0-9]+[dDeE][-+]?[0-9]+\\b"
+				},
+				{
+					"name": "constant.numeric.integer.qe-in",
+					"match": "[-+]?\\b[0-9]+\\b"
+				},
+				{
+					"name": "punctuation.separator.comma.qe-in",
+					"match": ","
+				}
+			]
+		},
+		"elements": {
+			"patterns": [
+				{
+					"name": "entity.name.tag.element.qe-in",
+					"match": "\\b(H|He|Li|Be|B|C|N|O|F|Ne|Na|Mg|Al|Si|P|S|Cl|Ar|K|Ca|Sc|Ti|V|Cr|Mn|Fe|Co|Ni|Cu|Zn|Ga|Ge|As|Se|Br|Kr|Rb|Sr|Y|Zr|Nb|Mo|Tc|Ru|Rh|Pd|Ag|Cd|In|Sn|Sb|Te|I|Xe|Cs|Ba|La|Ce|Pr|Nd|Pm|Sm|Eu|Gd|Tb|Dy|Ho|Er|Tm|Yb|Lu|Hf|Ta|W|Re|Os|Ir|Pt|Au|Hg|Tl|Pb|Bi|Po|At|Rn|Fr|Ra|Ac|Th|Pa|U|Np|Pu|Am|Cm|Bk|Cf|Es|Fm|Md|No|Lr|Rf|Db|Sg|Bh|Hs|Mt|Ds|Rg|Cn|Nh|Fl|Mc|Lv|Ts|Og)\\b"
+				}
+			]
+		},
+		"filenames": {
+			"patterns": [
+				{
+					"name": "support.constant.filename.upf.qe-in",
+					"match": "\\b\\S+\\.(?:UPF|upf)\\b"
+				}
+			]
+		}
+	}
+}

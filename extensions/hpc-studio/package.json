@@ -1,7 +1,7 @@
 {
 	"name": "hpc-studio",
 	"displayName": "HPC Studio Core",
-	"description": "Core integration engine for HPC Studio: Sidecar supervisor, cluster connectivity, and simulation tools",
+	"description": "Core integration engine for HPC Studio: Sidecar supervisor, cluster connectivity, and scientific simulation languages",
 	"version": "1.0.0",
 	"publisher": "hpc-studio",
 	"license": "MIT",
@@ -10,6 +10,10 @@
 	},
 	"activationEvents": [
 		"onStartupFinished"
+	],
+	"categories": [
+		"Programming Languages",
+		"Other"
 	],
 	"extensionKind": [
 		"workspace",
@@ -80,7 +84,124 @@
 					"description": "Log verbosity level for HPC Studio backend server."
 				}
 			}
-		}
+		},
+		"languages": [
+			{
+				"id": "quantum-espresso-input",
+				"aliases": [
+					"Quantum ESPRESSO Input",
+					"qe-in"
+				],
+				"extensions": [
+					".in",
+					".pwi"
+				],
+				"configuration": "./languages/quantum-espresso-input-configuration.json"
+			},
+			{
+				"id": "quantum-espresso-output",
+				"aliases": [
+					"Quantum ESPRESSO Output",
+					"qe-out"
+				],
+				"extensions": [
+					".out",
+					".pwo"
+				],
+				"configuration": "./languages/quantum-espresso-output-configuration.json"
+			},
+			{
+				"id": "slurm",
+				"aliases": [
+					"Slurm",
+					"slurm"
+				],
+				"extensions": [
+					".slurm",
+					".sbatch"
+				],
+				"filenames": [
+					"slurm.job"
+				],
+				"configuration": "./languages/slurm-configuration.json"
+			},
+			{
+				"id": "cif",
+				"aliases": [
+					"Crystallographic Information File",
+					"cif"
+				],
+				"extensions": [
+					".cif"
+				],
+				"configuration": "./languages/cif-configuration.json"
+			},
+			{
+				"id": "xyz",
+				"aliases": [
+					"Cartesian Coordinate File",
+					"xyz"
+				],
+				"extensions": [
+					".xyz"
+				],
+				"configuration": "./languages/xyz-configuration.json"
+			},
+			{
+				"id": "upf",
+				"aliases": [
+					"Unified Pseudopotential Format",
+					"upf"
+				],
+				"extensions": [
+					".UPF",
+					".upf"
+				],
+				"configuration": "./languages/upf-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "quantum-espresso-input",
+				"scopeName": "source.qe-in",
+				"path": "./syntaxes/quantum-espresso-input.tmLanguage.json"
+			},
+			{
+				"language": "quantum-espresso-output",
+				"scopeName": "source.qe-out",
+				"path": "./syntaxes/quantum-espresso-output.tmLanguage.json"
+			},
+			{
+				"language": "slurm",
+				"scopeName": "source.slurm",
+				"path": "./syntaxes/slurm.tmLanguage.json"
+			},
+			{
+				"language": "cif",
+				"scopeName": "source.cif",
+				"path": "./syntaxes/cif.tmLanguage.json"
+			},
+			{
+				"language": "xyz",
+				"scopeName": "source.xyz",
+				"path": "./syntaxes/xyz.tmLanguage.json"
+			},
+			{
+				"language": "upf",
+				"scopeName": "source.upf",
+				"path": "./syntaxes/upf.tmLanguage.json"
+			}
+		],
+		"snippets": [
+			{
+				"language": "quantum-espresso-input",
+				"path": "./snippets/quantum-espresso-input.code-snippets"
+			},
+			{
+				"language": "slurm",
+				"path": "./snippets/slurm.code-snippets"
+			}
+		]
 	},
 	"scripts": {
 		"compile": "gulp compile-extension:hpc-studio",

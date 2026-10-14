@@ -1,0 +1,228 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Quantum ESPRESSO Output",
+	"scopeName": "source.qe-out",
+	"patterns": [
+		{ "include": "#errors-and-warnings" },
+		{ "include": "#convergence" },
+		{ "include": "#headers" },
+		{ "include": "#parallelism" },
+		{ "include": "#scf-iterations" },
+		{ "include": "#energies" },
+		{ "include": "#forces-and-stress" },
+		{ "include": "#timing" },
+		{ "include": "#comments" },
+		{ "include": "#values" },
+		{ "include": "#units" }
+	],
+	"repository": {
+		"errors-and-warnings": {
+			"patterns": [
+				{
+					"name": "markup.deleted.error.qe-out invalid.illegal.error.qe-out",
+					"match": "(?i)^.*\\b(convergence\\s+NOT\\s+achieved|Error\\s+in\\s+routine\\s+\\S+|%+\\s*Error.*|%+\\s*WARNING.*|CRITICAL|stopping\\s*\\.\\.\\.).*$"
+				},
+				{
+					"name": "markup.changed.warning.qe-out invalid.deprecated.warning.qe-out",
+					"match": "(?i)^.*\\b(DEPRECATED|caution|negative\\s+rho|warning).*$"
+				}
+			]
+		},
+		"convergence": {
+			"patterns": [
+				{
+					"name": "markup.inserted.success.qe-out entity.name.function.success.qe-out",
+					"match": "\\b(JOB\\s+DONE\\.?|bfgs\\s+converged\\s+in\\s+\\d+\\s+scf\\s+cycles|End\\s+of\\s+BFGS\\s+geometry\\s+calculation|End\\s+of\\s+self-consistent\\s+calculation|convergence\\s+has\\s+been\\s+achieved)\\b"
+				}
+			]
+		},
+		"headers": {
+			"patterns": [
+				{
+					"match": "(Program\\s+PWSCF)\\s+(v\\.[0-9a-zA-Z._]+)",
+					"captures": {
+						"1": { "name": "keyword.control.header.program.qe-out entity.name.section.program.qe-out" },
+						"2": { "name": "constant.numeric.version.qe-out" }
+					}
+				},
+				{
+					"match": "^\\s*(Title:)\\s*(.*)$",
+					"captures": {
+						"1": { "name": "keyword.other.title.qe-out" },
+						"2": { "name": "string.unquoted.title.qe-out" }
+					}
+				},
+				{
+					"match": "^\\s*(PseudoPot\\.\\s*#\\s*\\d+\\s+for\\s+\\w+\\s+read\\s+from\\s+file:)\\s*(.*)$",
+					"captures": {
+						"1": { "name": "keyword.other.pseudopot.qe-out" },
+						"2": { "name": "support.constant.filename.qe-out" }
+					}
+				},
+				{
+					"match": "\\b(crystal\\s+axes|reciprocal\\s+axes|atomic\\s+species|site\\s+n\\.|positions|bravais-lattice\\s+index|lattice\\s+parameter|unit-cell\\s+volume|number\\s+of\\s+atoms/cell|number\\s+of\\s+atomic\\s+types|number\\s+of\\s+electrons|number\\s+of\\s+Kohn-Sham\\s+states|kinetic-energy\\s+cutoff|charge-density\\s+cutoff|number\\s+of\\s+k\\s+points)\\b",
+					"name": "support.type.property.qe-out"
+				}
+			]
+		},
+		"parallelism": {
+			"patterns": [
+				{
+					"match": "(?i)\\b(MPI\\s+processes|OpenMP\\s+threads|Threads/MPI\\s+process|Number\\s+of\\s+MPI\\s+processes|Parallel\\s+version|cores|ranks)\\b",
+					"name": "support.type.parallel.qe-out"
+				}
+			]
+		},
+		"scf-iterations": {
+			"patterns": [
+				{
+					"match": "(iteration\\s*#\\s*\\d+)(?:\\s+(ecut=\\s*[0-9.]+\\s*Ry))?(?:\\s+(beta=\\s*[0-9.]+))?",
+					"captures": {
+						"1": { "name": "entity.name.section.iteration.qe-out keyword.control.iteration.qe-out" },
+						"2": { "name": "variable.other.ecut.qe-out" },
+						"3": { "name": "variable.other.beta.qe-out" }
+					}
+				},
+				{
+					"match": "Entering\\s+Dynamics:\\s*iteration\\s*=\\s*\\d+",
+					"name": "entity.name.section.dynamics.qe-out keyword.control.dynamics.qe-out"
+				}
+			]
+		},
+		"energies": {
+			"patterns": [
+				{
+					"match": "(!?\\s*total\\s+energy)\\s*(=)\\s*([-+]?[0-9.]+)\\s*(Ry|eV|Hartree)?",
+					"captures": {
+						"1": { "name": "keyword.other.energy.total.qe-out markup.bold.qe-out" },
+						"2": { "name": "punctuation.separator.key-value.qe-out" },
+						"3": { "name": "constant.numeric.float.energy.qe-out markup.bold.qe-out" },
+						"4": { "name": "keyword.other.unit.qe-out" }
+					}
+				},
+				{
+					"match": "(Harris-Foulkes\\s+estimate)\\s*(=)\\s*([-+]?[0-9.]+)\\s*(Ry|eV)?",
+					"captures": {
+						"1": { "name": "support.variable.harris-foulkes.qe-out" },
+						"2": { "name": "punctuation.separator.key-value.qe-out" },
+						"3": { "name": "constant.numeric.float.qe-out" },
+						"4": { "name": "keyword.other.unit.qe-out" }
+					}
+				},
+				{
+					"match": "(estimated\\s+scf\\s+accuracy)\\s*(<)\\s*([0-9.eE+-]+)\\s*(Ry|eV)?",
+					"captures": {
+						"1": { "name": "support.variable.accuracy.qe-out" },
+						"2": { "name": "keyword.operator.comparison.qe-out" },
+						"3": { "name": "constant.numeric.float.qe-out" },
+						"4": { "name": "keyword.other.unit.qe-out" }
+					}
+				},
+				{
+					"match": "(The\\s+Fermi\\s+energy\\s+is)\\s*([-+]?[0-9.]+)\\s*(ev|eV)",
+					"captures": {
+						"1": { "name": "variable.other.fermi.qe-out markup.bold.qe-out" },
+						"2": { "name": "constant.numeric.float.qe-out" },
+						"3": { "name": "keyword.other.unit.qe-out" }
+					}
+				},
+				{
+					"match": "(highest\\s+occupied,\\s+lowest\\s+unoccupied\\s+level\\s*\\(ev\\):)\\s*([-+]?[0-9.]+)\\s+([-+]?[0-9.]+)",
+					"captures": {
+						"1": { "name": "support.variable.homo-lumo.qe-out" },
+						"2": { "name": "constant.numeric.float.homo.qe-out" },
+						"3": { "name": "constant.numeric.float.lumo.qe-out" }
+					}
+				}
+			]
+		},
+		"forces-and-stress": {
+			"patterns": [
+				{
+					"match": "(Forces\\s+acting\\s+on\\s+atoms.*:)",
+					"name": "entity.name.section.forces.qe-out"
+				},
+				{
+					"match": "(Total\\s+force)\\s*(=)\\s*([-+]?[0-9.]+)(?:\\s+(Total\\s+SCF\\s+correction)\\s*(=)\\s*([-+]?[0-9.]+))?",
+					"captures": {
+						"1": { "name": "support.constant.forces.qe-out" },
+						"2": { "name": "punctuation.separator.key-value.qe-out" },
+						"3": { "name": "constant.numeric.float.qe-out" },
+						"4": { "name": "support.constant.forces.qe-out" },
+						"5": { "name": "punctuation.separator.key-value.qe-out" },
+						"6": { "name": "constant.numeric.float.qe-out" }
+					}
+				},
+				{
+					"match": "(total\\s+stress)\\s*(\\([^)]+\\))",
+					"captures": {
+						"1": { "name": "entity.name.section.stress.qe-out" },
+						"2": { "name": "keyword.other.unit.qe-out" }
+					}
+				}
+			]
+		},
+		"timing": {
+			"patterns": [
+				{
+					"match": "(total\\s+cpu\\s+time\\s+spent\\s+up\\s+to\\s+now\\s+is)\\s*([0-9.]+)\\s*(secs|s)",
+					"captures": {
+						"1": { "name": "storage.modifier.cputime.qe-out" },
+						"2": { "name": "constant.numeric.float.qe-out" },
+						"3": { "name": "keyword.other.unit.qe-out" }
+					}
+				},
+				{
+					"match": "(PWSCF|init_run|electrons|ions)\\s*(:)\\s*([0-9.]+\\s*s\\s*CPU)?\\s*([0-9.]+\\s*s\\s*WALL)?",
+					"captures": {
+						"1": { "name": "support.function.routine.qe-out" },
+						"2": { "name": "punctuation.separator.qe-out" },
+						"3": { "name": "variable.other.cputime.qe-out" },
+						"4": { "name": "variable.other.walltime.qe-out" }
+					}
+				}
+			]
+		},
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.exclamation.qe-out",
+					"match": "(!)\\s*(?!total energy).*$",
+					"captures": {
+						"1": { "name": "punctuation.definition.comment.qe-out" }
+					}
+				}
+			]
+		},
+		"values": {
+			"patterns": [
+				{
+					"name": "string.quoted.single.qe-out",
+					"begin": "'",
+					"end": "'"
+				},
+				{
+					"name": "string.quoted.double.qe-out",
+					"begin": "\"",
+					"end": "\""
+				},
+				{
+					"name": "constant.numeric.float.qe-out",
+					"match": "[-+]?\\b[0-9]+\\.[0-9]+([eEdD][-+]?[0-9]+)?\\b|[-+]?\\b[0-9]+[eEdD][-+]?[0-9]+\\b"
+				},
+				{
+					"name": "constant.numeric.integer.qe-out",
+					"match": "[-+]?\\b[0-9]+\\b"
+				}
+			]
+		},
+		"units": {
+			"patterns": [
+				{
+					"name": "keyword.other.unit.qe-out",
+					"match": "\\b(Ry|eV|ev|Hartree|a\\.u\\.|Ry/au|Ry/bohr\\*\\*3|kbar|PWs|secs|sec|s|CPU|WALL)\\b"
+				}
+			]
+		}
+	}
+}

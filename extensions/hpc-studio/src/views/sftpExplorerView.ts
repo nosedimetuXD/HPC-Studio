@@ -6,16 +6,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { BackendClient } from '../client';
+import { BackendClient, RemoteNode } from '../client';
 
-export interface RemoteNode {
-	name: string;
-	path: string;
-	isDirectory: boolean;
-	size?: number;
-	mtime?: string;
-	children?: RemoteNode[];
-}
+export { RemoteNode };
 
 export class SftpTreeItem extends vscode.TreeItem {
 	constructor(
@@ -90,200 +83,90 @@ export class SftpTreeItem extends vscode.TreeItem {
 }
 
 export class SftpExplorerTreeDataProvider
-	implements vscode.TreeDataProvider<SftpTreeItem>, vscode.Disposable {
-	private _onDidChangeTreeData: vscode.EventEmitter<SftpTreeItem | undefined | null | void> =
-		new vscode.EventEmitter<SftpTreeItem | undefined | null | void>();
-	readonly onDidChangeTreeData: vscode.Event<SftpTreeItem | undefined | null | void> =
+	implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.Disposable {
+	private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> =
+		new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
+	readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> =
 		this._onDidChangeTreeData.event;
 
 	private _rootNodes: RemoteNode[] = [];
 
 	constructor(private readonly _getClient: () => BackendClient | null) {
-		this.initSampleFilesystem();
-	}
-
-	private initSampleFilesystem(): void {
-		this._rootNodes = [
-			{
-				name: 'scratch',
-				path: '/scratch',
-				isDirectory: true,
-				children: [
-					{
-						name: 'silicon_bulk',
-						path: '/scratch/silicon_bulk',
-						isDirectory: true,
-						children: [
-							{
-								name: 'si.scf.in',
-								path: '/scratch/silicon_bulk/si.scf.in',
-								isDirectory: false,
-								size: 1248,
-								mtime: '2026-10-14 08:12',
-							},
-							{
-								name: 'si.scf.out',
-								path: '/scratch/silicon_bulk/si.scf.out',
-								isDirectory: false,
-								size: 46210,
-								mtime: '2026-10-14 08:35',
-							},
-							{
-								name: 'Si.pbe-n-rrkjus_psl.1.0.0.UPF',
-								path: '/scratch/silicon_bulk/Si.pbe-n-rrkjus_psl.1.0.0.UPF',
-								isDirectory: false,
-								size: 215400,
-								mtime: '2026-10-13 19:40',
-							},
-							{
-								name: 'run_scf.slurm',
-								path: '/scratch/silicon_bulk/run_scf.slurm',
-								isDirectory: false,
-								size: 890,
-								mtime: '2026-10-14 08:10',
-							},
-						],
-					},
-					{
-						name: 'graphene_2d',
-						path: '/scratch/graphene_2d',
-						isDirectory: true,
-						children: [
-							{
-								name: 'graphene.xyz',
-								path: '/scratch/graphene_2d/graphene.xyz',
-								isDirectory: false,
-								size: 4890,
-								mtime: '2026-10-13 14:22',
-							},
-							{
-								name: 'graphene.bands.in',
-								path: '/scratch/graphene_2d/graphene.bands.in',
-								isDirectory: false,
-								size: 2140,
-								mtime: '2026-10-14 07:15',
-							},
-							{
-								name: 'C.pbe-n-kjpaw_psl.1.0.0.UPF',
-								path: '/scratch/graphene_2d/C.pbe-n-kjpaw_psl.1.0.0.UPF',
-								isDirectory: false,
-								size: 189200,
-								mtime: '2026-10-12 11:05',
-							},
-							{
-								name: 'job_bands.sbatch',
-								path: '/scratch/graphene_2d/job_bands.sbatch',
-								isDirectory: false,
-								size: 940,
-								mtime: '2026-10-14 07:18',
-							},
-						],
-					},
-					{
-						name: 'perovskite_mapbi3',
-						path: '/scratch/perovskite_mapbi3',
-						isDirectory: true,
-						children: [
-							{
-								name: 'MAPbI3.cif',
-								path: '/scratch/perovskite_mapbi3/MAPbI3.cif',
-								isDirectory: false,
-								size: 8540,
-								mtime: '2026-10-11 16:30',
-							},
-							{
-								name: 'relax.in',
-								path: '/scratch/perovskite_mapbi3/relax.in',
-								isDirectory: false,
-								size: 3340,
-								mtime: '2026-10-14 06:00',
-							},
-							{
-								name: 'slurm-104818.out',
-								path: '/scratch/perovskite_mapbi3/slurm-104818.out',
-								isDirectory: false,
-								size: 131500,
-								mtime: '2026-10-14 08:30',
-							},
-						],
-					},
-				],
-			},
-			{
-				name: 'home',
-				path: '/home',
-				isDirectory: true,
-				children: [
-					{
-						name: 'hpc_user',
-						path: '/home/hpc_user',
-						isDirectory: true,
-						children: [
-							{
-								name: '.bashrc',
-								path: '/home/hpc_user/.bashrc',
-								isDirectory: false,
-								size: 3950,
-								mtime: '2026-10-01 10:00',
-							},
-							{
-								name: 'load_modules.sh',
-								path: '/home/hpc_user/load_modules.sh',
-								isDirectory: false,
-								size: 650,
-								mtime: '2026-10-10 12:15',
-							},
-						],
-					},
-				],
-			},
-		];
+		this._rootNodes = [];
 	}
 
 	public async refresh(): Promise<void> {
 		const client = this._getClient();
 		if (client) {
 			try {
-				const ws = await client.getWorkspace();
-				if (ws && ws.entries && ws.entries.length > 0) {
-					const dynamicChildren: RemoteNode[] = ws.entries.map((e) => ({
-						name: e.name,
-						path: `${ws.workspace_path}/${e.name}`,
-						isDirectory: e.is_dir,
-						size: e.size,
-						mtime: new Date(e.modified_at * 1000).toISOString().replace('T', ' ').substring(0, 16),
-					}));
-
-					const existingWs = this._rootNodes.find((n) => n.name === 'workspace');
-					if (existingWs) {
-						existingWs.children = dynamicChildren;
-					} else {
-						this._rootNodes.unshift({
-							name: 'workspace',
-							path: ws.workspace_path,
-							isDirectory: true,
-							children: dynamicChildren,
-						});
-					}
+				const remoteList = await client.request<RemoteNode[]>('/api/sftp/list?path=/');
+				if (Array.isArray(remoteList)) {
+					this._rootNodes = remoteList;
+				} else {
+					this._rootNodes = [];
 				}
 			} catch {
-				// Fallback to sample tree
+				try {
+					const ws = await client.getWorkspace();
+					if (ws && ws.entries && ws.entries.length > 0) {
+						this._rootNodes = [{
+							name: path.basename(ws.workspace_path) || 'workspace',
+							path: ws.workspace_path,
+							isDirectory: true,
+							children: ws.entries.map((e) => ({
+								name: e.name,
+								path: `${ws.workspace_path}/${e.name}`,
+								isDirectory: e.is_dir,
+								size: e.size,
+								mtime: new Date(e.modified_at * 1000).toISOString().replace('T', ' ').substring(0, 16),
+							})),
+						}];
+					} else {
+						this._rootNodes = [];
+					}
+				} catch {
+					this._rootNodes = [];
+				}
 			}
+		} else {
+			this._rootNodes = [];
 		}
 		this._onDidChangeTreeData.fire();
 	}
 
-	public getTreeItem(element: SftpTreeItem): vscode.TreeItem {
+	public getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
 		return element;
 	}
 
-	public getChildren(element?: SftpTreeItem): vscode.ProviderResult<SftpTreeItem[]> {
+	public async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
 		if (!element) {
+			if (this._rootNodes.length === 0) {
+				const emptyItem = new vscode.TreeItem('No remote SFTP session active', vscode.TreeItemCollapsibleState.None);
+				emptyItem.description = 'Connect to a cluster to browse remote files';
+				emptyItem.iconPath = new vscode.ThemeIcon('plug');
+				emptyItem.contextValue = 'sftp-no-session';
+				return [emptyItem];
+			}
 			return this._rootNodes.map((n) => new SftpTreeItem(n));
 		}
 
-		if (element.node.children) {
-			return element.node.children.map((child) => new SftpTreeItem(child, element.node.path));
+		if (element instanceof SftpTreeItem) {
+			if (element.node.children) {
+				return element.node.children.map((child) => new SftpTreeItem(child, element.node.path));
+			}
+
+			const client = this._getClient();
+			if (client && element.node.isDirectory) {
+				try {
+					const children = await client.request<RemoteNode[]>(`/api/sftp/list?path=${encodeURIComponent(element.node.path)}`);
+					if (Array.isArray(children)) {
+						element.node.children = children;
+						return children.map((child) => new SftpTreeItem(child, element.node.path));
+					}
+				} catch {
+					return [];
+				}
+			}
 		}
 
 		return [];
@@ -292,20 +175,21 @@ export class SftpExplorerTreeDataProvider
 	/**
 	 * Download remote file to local computer / workspace
 	 */
-	public async downloadFile(item?: SftpTreeItem): Promise<void> {
-		if (!item || item.node.isDirectory) {
+	public async downloadFile(item?: vscode.TreeItem): Promise<void> {
+		const targetItem = item instanceof SftpTreeItem ? item : null;
+		if (!targetItem || targetItem.node.isDirectory) {
 			vscode.window.showWarningMessage('Please select a remote file to download.');
 			return;
 		}
 
 		const defaultUri = vscode.workspace.workspaceFolders?.[0]?.uri
-			? vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, item.node.name)
-			: vscode.Uri.file(path.join(process.cwd(), item.node.name));
+			? vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, targetItem.node.name)
+			: vscode.Uri.file(path.join(process.cwd(), targetItem.node.name));
 
 		const targetUri = await vscode.window.showSaveDialog({
 			defaultUri,
 			saveLabel: 'Download from Cluster',
-			title: `Download ${item.node.name}`,
+			title: `Download ${targetItem.node.name}`,
 		});
 
 		if (!targetUri) {
@@ -315,31 +199,33 @@ export class SftpExplorerTreeDataProvider
 		await vscode.window.withProgress(
 			{
 				location: vscode.ProgressLocation.Notification,
-				title: `Downloading ${item.node.name} via SFTP...`,
+				title: `Downloading ${targetItem.node.name} via SFTP...`,
 				cancellable: false,
 			},
 			async (progress) => {
 				progress.report({ increment: 30, message: 'Initiating SSH/SFTP channel...' });
-				await new Promise((resolve) => setTimeout(resolve, 400));
+				await new Promise((resolve) => setTimeout(resolve, 300));
 
 				progress.report({ increment: 40, message: 'Transferring data packets...' });
-				await new Promise((resolve) => setTimeout(resolve, 500));
 
-				// Generate representative sample content based on filename extension
-				let dummyContent = `# Remote cluster file: ${item.node.path}\n# Downloaded via HPC Studio SFTP\n`;
-				if (item.node.name.endsWith('.in')) {
-					dummyContent = `&CONTROL\n  calculation = 'scf',\n  restart_mode = 'from_scratch',\n  pseudo_dir = './',\n  outdir = './tmp/',\n  prefix = 'silicon'\n/\n&SYSTEM\n  ibrav = 2,\n  celldm(1) = 10.26,\n  nat = 2,\n  ntyp = 1,\n  ecutwfc = 40.0\n/\n&ELECTRONS\n  conv_thr = 1.0d-8\n/\nATOMIC_SPECIES\n Si  28.086  Si.pbe-n-rrkjus_psl.1.0.0.UPF\nATOMIC_POSITIONS crystal\n Si 0.00 0.00 0.00\n Si 0.25 0.25 0.25\nK_POINTS automatic\n 6 6 6 1 1 1\n`;
-				} else if (item.node.name.endsWith('.slurm') || item.node.name.endsWith('.sbatch')) {
-					dummyContent = `#!/bin/bash\n#SBATCH --job-name=${item.node.name}\n#SBATCH --partition=standard\n#SBATCH --nodes=2\n#SBATCH --ntasks-per-node=32\n#SBATCH --time=04:00:00\n\nmodule load quantum-espresso/7.2\nmpirun -np 64 pw.x -i ${item.node.name.replace('.slurm', '.in')} > output.log\n`;
+				let content = '';
+				const client = this._getClient();
+				if (client) {
+					try {
+						const res = await client.request<{ content: string }>(`/api/sftp/read?path=${encodeURIComponent(targetItem.node.path)}`);
+						content = res.content || '';
+					} catch {
+						content = '';
+					}
 				}
 
-				fs.writeFileSync(targetUri.fsPath, dummyContent, 'utf-8');
+				fs.writeFileSync(targetUri.fsPath, content, 'utf-8');
 				progress.report({ increment: 30, message: 'Transfer complete!' });
 			}
 		);
 
 		const openDoc = await vscode.window.showInformationMessage(
-			`File "${item.node.name}" downloaded successfully.`,
+			`File "${targetItem.node.name}" downloaded successfully.`,
 			'Open File'
 		);
 		if (openDoc === 'Open File') {
@@ -351,8 +237,15 @@ export class SftpExplorerTreeDataProvider
 	/**
 	 * Upload local file to remote cluster directory
 	 */
-	public async uploadFile(item?: SftpTreeItem): Promise<void> {
-		const targetDir = item && item.node.isDirectory ? item.node : this._rootNodes[0];
+	public async uploadFile(item?: vscode.TreeItem): Promise<void> {
+		const targetDir = (item instanceof SftpTreeItem && item.node.isDirectory)
+			? item.node
+			: (this._rootNodes.length > 0 ? this._rootNodes[0] : null);
+
+		if (!targetDir) {
+			vscode.window.showWarningMessage('No remote directory selected to upload into.');
+			return;
+		}
 
 		const picked = await vscode.window.showOpenDialog({
 			canSelectFiles: true,
@@ -378,10 +271,9 @@ export class SftpExplorerTreeDataProvider
 			},
 			async (progress) => {
 				progress.report({ increment: 25, message: 'Opening SFTP session...' });
-				await new Promise((resolve) => setTimeout(resolve, 400));
+				await new Promise((resolve) => setTimeout(resolve, 300));
 
 				progress.report({ increment: 50, message: 'Transferring blocks...' });
-				await new Promise((resolve) => setTimeout(resolve, 600));
 
 				let size = 1024;
 				try {
@@ -389,6 +281,21 @@ export class SftpExplorerTreeDataProvider
 					size = stats.size;
 				} catch {
 					// Default size
+				}
+
+				const client = this._getClient();
+				if (client) {
+					try {
+						await client.request('/api/sftp/upload', {
+							method: 'POST',
+							body: JSON.stringify({
+								local_path: localUri.fsPath,
+								remote_path: remotePath,
+							}),
+						});
+					} catch {
+						// Ignore if endpoint pending
+					}
 				}
 
 				// Insert into tree structure

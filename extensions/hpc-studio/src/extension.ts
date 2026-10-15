@@ -202,7 +202,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 		vscode.window.registerTreeDataProvider('hpc-studio.clustersView', clustersProvider)
 	);
 
-	const slurmQueueProvider = new SlurmQueueTreeDataProvider(() => client);
+	const slurmQueueProvider = new SlurmQueueTreeDataProvider(
+		() => client,
+		() => clustersProvider.getActiveCluster()
+	);
 	context.subscriptions.push(slurmQueueProvider);
 	context.subscriptions.push(
 		vscode.window.registerTreeDataProvider('hpc-studio.slurmQueueView', slurmQueueProvider)

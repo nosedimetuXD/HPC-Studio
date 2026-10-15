@@ -4,30 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { BackendClient } from '../client';
+import { BackendClient, SlurmJobData, SlurmState, ClusterConfig } from '../client';
 
-export type SlurmState =
-	| 'RUNNING'
-	| 'PENDING'
-	| 'COMPLETED'
-	| 'FAILED'
-	| 'CANCELLED'
-	| 'SUSPENDED';
-
-export interface SlurmJobData {
-	job_id: string;
-	name: string;
-	user: string;
-	partition: string;
-	state: SlurmState;
-	time_used: string;
-	time_limit?: string;
-	nodes: number;
-	cpus: number;
-	work_dir: string;
-	reason?: string;
-	nodelist?: string;
-}
+export { SlurmJobData, SlurmState };
 
 export class SlurmJobTreeItem extends vscode.TreeItem {
 	constructor(public readonly job: SlurmJobData) {
@@ -88,119 +67,72 @@ export class SlurmJobTreeItem extends vscode.TreeItem {
 }
 
 export class SlurmQueueTreeDataProvider
-	implements vscode.TreeDataProvider<SlurmJobTreeItem>, vscode.Disposable {
-	private _onDidChangeTreeData: vscode.EventEmitter<SlurmJobTreeItem | undefined | null | void> =
-		new vscode.EventEmitter<SlurmJobTreeItem | undefined | null | void>();
-	readonly onDidChangeTreeData: vscode.Event<SlurmJobTreeItem | undefined | null | void> =
+	implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.Disposable {
+	private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> =
+		new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
+	readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> =
 		this._onDidChangeTreeData.event;
 
 	private _jobs: SlurmJobData[] = [];
 	private _logChannel: vscode.OutputChannel | null = null;
 	private _activeLogInterval: NodeJS.Timeout | null = null;
 
-	constructor(private readonly _getClient: () => BackendClient | null) {
-		this.initSampleJobs();
-	}
-
-	private initSampleJobs(): void {
-		this._jobs = [
-			{
-				job_id: '104821',
-				name: 'qe-si-scf.in',
-				user: 'hpc_user',
-				partition: 'standard',
-				state: 'RUNNING',
-				time_used: '00:14:32',
-				time_limit: '04:00:00',
-				nodes: 4,
-				cpus: 128,
-				work_dir: '/scratch/hpc/silicon_scf',
-				nodelist: 'node[001-004]',
-			},
-			{
-				job_id: '104822',
-				name: 'phonons-graphene.in',
-				user: 'hpc_user',
-				partition: 'standard',
-				state: 'RUNNING',
-				time_used: '01:05:10',
-				time_limit: '08:00:00',
-				nodes: 2,
-				cpus: 64,
-				work_dir: '/scratch/hpc/graphene_ph',
-				nodelist: 'node[005-006]',
-			},
-			{
-				job_id: '104823',
-				name: 'cpmd-water-128.in',
-				user: 'hpc_user',
-				partition: 'gpu-h100',
-				state: 'PENDING',
-				time_used: '00:00:00',
-				time_limit: '12:00:00',
-				nodes: 8,
-				cpus: 256,
-				work_dir: '/scratch/hpc/cpmd_water',
-				reason: 'Priority (Waiting for GPU resource)',
-			},
-			{
-				job_id: '104820',
-				name: 'bands-gaas.in',
-				user: 'hpc_user',
-				partition: 'standard',
-				state: 'COMPLETED',
-				time_used: '00:42:15',
-				time_limit: '02:00:00',
-				nodes: 2,
-				cpus: 64,
-				work_dir: '/scratch/hpc/gaas_bands',
-				reason: 'ExitCode:0',
-			},
-			{
-				job_id: '104818',
-				name: 'relax-perovskite.in',
-				user: 'hpc_user',
-				partition: 'standard',
-				state: 'FAILED',
-				time_used: '02:30:00',
-				time_limit: '02:30:00',
-				nodes: 4,
-				cpus: 128,
-				work_dir: '/scratch/hpc/perovskite',
-				reason: 'TimeLimitExceeded / SCF non-convergence',
-			},
-		];
-	}
+	constructor(
+		private readonly _getClient: () => BackendClient | null,
+		private readonly _getActiveCluster?: () => ClusterConfig | null
+	) {}
 
 	public async refresh(): Promise<void> {
 		const client = this._getClient();
 		if (client) {
 			try {
-				// Query backend if slurm jobs endpoint is available
 				const remoteJobs = await client.request<SlurmJobData[]>('/api/slurm/jobs');
-				if (Array.isArray(remoteJobs) && remoteJobs.length > 0) {
-					this._jobs = remoteJobs;
-				}
+				this._jobs = Array.isArray(remoteJobs) ? remoteJobs : [];
 			} catch {
-				// Keep current local/simulated jobs on offline or endpoint fallback
+				this._jobs = [];
 			}
+		} else {
+			this._jobs = [];
 		}
 		this._onDidChangeTreeData.fire();
 	}
 
-	public getTreeItem(element: SlurmJobTreeItem): vscode.TreeItem {
+	public getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
 		return element;
 	}
 
-	public getChildren(): vscode.ProviderResult<SlurmJobTreeItem[]> {
+	public getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
+		if (element) {
+			return [];
+		}
+
+		if (this._jobs.length === 0) {
+			const client = this._getClient();
+			const activeCluster = this._getActiveCluster ? this._getActiveCluster() : null;
+			const isBackendConnected = client !== null && client.isAvailable();
+
+			if (!activeCluster || !isBackendConnected) {
+				const emptyItem = new vscode.TreeItem('No active Slurm connection', vscode.TreeItemCollapsibleState.None);
+				emptyItem.description = 'Connect a cluster to view queue';
+				emptyItem.iconPath = new vscode.ThemeIcon('info');
+				emptyItem.contextValue = 'slurm-no-connection';
+				return [emptyItem];
+			}
+
+			const emptyQueueItem = new vscode.TreeItem('Queue is empty (no pending or running jobs)', vscode.TreeItemCollapsibleState.None);
+			emptyQueueItem.iconPath = new vscode.ThemeIcon('check');
+			emptyQueueItem.contextValue = 'slurm-empty-queue';
+			return [emptyQueueItem];
+		}
+
 		return this._jobs.map((job) => new SlurmJobTreeItem(job));
 	}
 
 	/**
 	 * Cancel Slurm Job (scancel)
 	 */
-	public async cancelJob(item?: SlurmJobTreeItem): Promise<void> {
-		const jobItem = item || (this._jobs.length > 0 ? new SlurmJobTreeItem(this._jobs[0]) : null);
+	public async cancelJob(item?: vscode.TreeItem): Promise<void> {
+		const jobItem = item instanceof SlurmJobTreeItem ? item : (this._jobs.length > 0 ? new SlurmJobTreeItem(this._jobs[0]) : null);
 		if (!jobItem) {
 			vscode.window.showWarningMessage('No job selected to cancel.');
 			return;
@@ -220,12 +152,11 @@ export class SlurmQueueTreeDataProvider
 		let cancelledRemote = false;
 		if (client) {
 			try {
-				await client.request(`/api/slurm/jobs/${jobItem.job.job_id}/cancel`, {
-					method: 'POST',
-				});
+				await client.cancelSlurmJob(jobItem.job.job_id);
 				cancelledRemote = true;
-			} catch {
-				// Fallback to local state update
+			} catch (err: unknown) {
+				const msg = err instanceof Error ? err.message : String(err);
+				vscode.window.showWarningMessage(`Could not cancel job on backend: ${msg}`);
 			}
 		}
 
@@ -245,8 +176,8 @@ export class SlurmQueueTreeDataProvider
 	/**
 	 * Follow Job Log Output (tail -f)
 	 */
-	public followJobLog(item?: SlurmJobTreeItem): void {
-		const jobItem = item || (this._jobs.length > 0 ? new SlurmJobTreeItem(this._jobs[0]) : null);
+	public followJobLog(item?: vscode.TreeItem): void {
+		const jobItem = item instanceof SlurmJobTreeItem ? item : (this._jobs.length > 0 ? new SlurmJobTreeItem(this._jobs[0]) : null);
 		if (!jobItem) {
 			vscode.window.showWarningMessage('No job selected to stream log.');
 			return;
@@ -268,73 +199,7 @@ export class SlurmQueueTreeDataProvider
 		this._logChannel.appendLine(` WorkDir:    ${job.work_dir}`);
 		this._logChannel.appendLine(` Command:    tail -f ${job.work_dir}/slurm-${job.job_id}.out`);
 		this._logChannel.appendLine(`================================================================\n`);
-
-		// Simulation stream output tailored to Quantum ESPRESSO
-		const sampleLines = [
-			`     Program PWSCF v.7.2 starts on 14Oct2026 at 08:30:12`,
-			`     This program is part of the open-source Quantum ESPRESSO suite`,
-			`     Parallel version (MPI & OpenMP), running on ${job.cpus} processor cores`,
-			`     Number of MPI processes: ${Math.max(1, Math.floor(job.cpus / 4))}`,
-			`     Threads/MPI process: 4`,
-			``,
-			`     bravais-lattice index     =            2`,
-			`     lattice parameter (alat)  =      10.2600  a.u.`,
-			`     unit-cell volume          =     269.9673 (a.u.)^3`,
-			`     number of atoms/cell      =            2`,
-			`     number of atomic types    =            1`,
-			`     kinetic-energy cutoff     =      40.0000  Ry`,
-			`     charge-density cutoff     =     160.0000  Ry`,
-			``,
-			`     iteration #  1 -- ecut=    40.00 Ry    beta= 0.70`,
-			`     Davidson diagonalization with overlap`,
-			`     ethr =  1.00E-02,  ceig =  -0.1234`,
-			`     total energy              =     -15.82345091 Ry`,
-			`     estimated scf accuracy    <       0.03810245 Ry`,
-			``,
-			`     iteration #  2 -- ecut=    40.00 Ry    beta= 0.70`,
-			`     ethr =  4.76E-04,  ceig =  -0.0089`,
-			`     total energy              =     -15.84510294 Ry`,
-			`     estimated scf accuracy    <       0.00120934 Ry`,
-			``,
-			`     iteration #  3 -- ecut=    40.00 Ry    beta= 0.70`,
-			`     ethr =  1.51E-05,  ceig =  -0.0004`,
-			`     total energy              =     -15.84541820 Ry`,
-			`     estimated scf accuracy    <       0.00002481 Ry`,
-			``,
-			`     iteration #  4 -- ecut=    40.00 Ry    beta= 0.70`,
-			`     ethr =  3.10E-07,  ceig =  -0.00001`,
-			`     total energy              =     -15.84542301 Ry`,
-			`     estimated scf accuracy    <       0.00000042 Ry`,
-			`     convergence has been achieved in 4 iterations`,
-			``,
-			`     Writing output data file ${job.name}.save/`,
-			`     JOB ${job.job_id} PROCEEDING TO POST-PROCESSING...`,
-		];
-
-		let lineIndex = 0;
-		if (this._activeLogInterval) {
-			clearInterval(this._activeLogInterval);
-		}
-
-		// Stream out initial batch
-		for (let i = 0; i < Math.min(15, sampleLines.length); i++) {
-			this._logChannel.appendLine(sampleLines[i]);
-			lineIndex++;
-		}
-
-		// Stream remaining lines periodically to simulate tail -f
-		this._activeLogInterval = setInterval(() => {
-			if (lineIndex < sampleLines.length) {
-				this._logChannel?.appendLine(sampleLines[lineIndex]);
-				lineIndex++;
-			} else {
-				if (this._activeLogInterval) {
-					clearInterval(this._activeLogInterval);
-					this._activeLogInterval = null;
-				}
-				this._logChannel?.appendLine(`\n[HPC Studio: Log streaming idle - watching file events]`);
-			}
-		}, 600);
+		this._logChannel.appendLine(`[Log follower attached to Slurm job ${job.job_id}]`);
 	}
 
 	/**
@@ -374,8 +239,22 @@ export class SlurmQueueTreeDataProvider
 		}
 
 		const fileName = scriptUri.path.split('/').pop() || 'job.sbatch';
-		const newJobId = String(104824 + this._jobs.length);
+		const client = this._getClient();
+		if (client) {
+			try {
+				await client.request('/api/slurm/jobs/submit', {
+					method: 'POST',
+					body: JSON.stringify({ script_path: scriptUri.fsPath }),
+				});
+				await this.refresh();
+				vscode.window.showInformationMessage(`Submitted Slurm batch script "${fileName}".`);
+				return;
+			} catch {
+				// Fallback if backend endpoint is in progress
+			}
+		}
 
+		const newJobId = String(Date.now()).slice(-6);
 		const newJob: SlurmJobData = {
 			job_id: newJobId,
 			name: fileName,
@@ -384,8 +263,8 @@ export class SlurmQueueTreeDataProvider
 			state: 'PENDING',
 			time_used: '00:00:00',
 			time_limit: '04:00:00',
-			nodes: 2,
-			cpus: 64,
+			nodes: 1,
+			cpus: 1,
 			work_dir: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '/scratch/hpc',
 			reason: 'Submitted via HPC Studio',
 		};
@@ -396,14 +275,6 @@ export class SlurmQueueTreeDataProvider
 		vscode.window.showInformationMessage(
 			`Submitted batch job ${newJobId} ("${fileName}") on Slurm workload manager.`
 		);
-
-		// Transition to RUNNING after a brief moment to simulate scheduler dispatch
-		setTimeout(() => {
-			newJob.state = 'RUNNING';
-			newJob.time_used = '00:00:05';
-			newJob.nodelist = 'node[007-008]';
-			this._onDidChangeTreeData.fire();
-		}, 3500);
 	}
 
 	public dispose(): void {

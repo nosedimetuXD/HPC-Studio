@@ -50,6 +50,49 @@ export interface WebSocketMessage<T = unknown> {
 
 export type WebSocketListener = (message: WebSocketMessage) => void;
 
+export interface ClusterConfig {
+	name: string;
+	hostname: string;
+	user?: string;
+	port?: number;
+	identityFile?: string;
+	proxyJump?: string;
+	description?: string;
+	isPredefined?: boolean;
+}
+
+export type SlurmState =
+	| 'RUNNING'
+	| 'PENDING'
+	| 'COMPLETED'
+	| 'FAILED'
+	| 'CANCELLED'
+	| 'SUSPENDED';
+
+export interface SlurmJobData {
+	job_id: string;
+	name: string;
+	user: string;
+	partition: string;
+	state: SlurmState;
+	time_used: string;
+	time_limit?: string;
+	nodes: number;
+	cpus: number;
+	work_dir: string;
+	reason?: string;
+	nodelist?: string;
+}
+
+export interface RemoteNode {
+	name: string;
+	path: string;
+	isDirectory: boolean;
+	size?: number;
+	mtime?: string;
+	children?: RemoteNode[];
+}
+
 export class BackendClient {
 	private _ws: WebSocket | null = null;
 	private _wsListeners = new Set<WebSocketListener>();
@@ -131,6 +174,32 @@ export class BackendClient {
 		}
 
 		return (await response.json()) as T;
+	}
+
+	isAvailable(): boolean {
+		return this._getBaseUrl() !== null;
+	}
+
+	async getSlurmJobs(): Promise<SlurmJobData[]> {
+		return this.request<SlurmJobData[]>('/api/slurm/jobs');
+	}
+
+	async cancelSlurmJob(jobId: string): Promise<boolean> {
+		const res = await this.request<{ success?: boolean }>(`/api/slurm/jobs/${encodeURIComponent(jobId)}/cancel`, {
+			method: 'POST',
+		});
+		return res?.success ?? true;
+	}
+
+	async getSftpList(path: string = '/'): Promise<RemoteNode[]> {
+		return this.request<RemoteNode[]>(`/api/sftp/list?path=${encodeURIComponent(path)}`);
+	}
+
+	async connectCluster(config: ClusterConfig): Promise<{ success: boolean; message: string }> {
+		return this.request<{ success: boolean; message: string }>('/api/clusters/connect', {
+			method: 'POST',
+			body: JSON.stringify(config),
+		});
 	}
 
 	connectWebSocket(): void {

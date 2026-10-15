@@ -8,17 +8,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as net from 'net';
+import { ClusterConfig } from '../client';
 
-export interface ClusterConfig {
-	name: string;
-	hostname: string;
-	user?: string;
-	port?: number;
-	identityFile?: string;
-	proxyJump?: string;
-	description?: string;
-	isPredefined?: boolean;
-}
+export { ClusterConfig } from '../client';
 
 export type ClusterItemType = 'cluster' | 'cluster-detail';
 
@@ -100,10 +92,10 @@ export class ClusterTreeItem extends vscode.TreeItem {
 }
 
 export class ClustersTreeDataProvider
-	implements vscode.TreeDataProvider<ClusterTreeItem>, vscode.Disposable {
-	private _onDidChangeTreeData: vscode.EventEmitter<ClusterTreeItem | undefined | null | void> =
-		new vscode.EventEmitter<ClusterTreeItem | undefined | null | void>();
-	readonly onDidChangeTreeData: vscode.Event<ClusterTreeItem | undefined | null | void> =
+	implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.Disposable {
+	private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> =
+		new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
+	readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> =
 		this._onDidChangeTreeData.event;
 
 	private _clusters: ClusterTreeItem[] = [];
@@ -136,17 +128,28 @@ export class ClustersTreeDataProvider
 		this.loadClusters();
 	}
 
-	public getTreeItem(element: ClusterTreeItem): vscode.TreeItem {
+	public getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
 		return element;
 	}
 
-	public getChildren(element?: ClusterTreeItem): vscode.ProviderResult<ClusterTreeItem[]> {
+	public getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
 		if (!element) {
+			if (this._clusters.length === 0) {
+				const emptyItem = new vscode.TreeItem('Add Remote Cluster...', vscode.TreeItemCollapsibleState.None);
+				emptyItem.iconPath = new vscode.ThemeIcon('add');
+				emptyItem.command = {
+					command: 'hpc-studio.addCluster',
+					title: 'Add Remote Cluster...',
+				};
+				emptyItem.tooltip = 'No remote clusters registered. Click to add a remote HPC cluster.';
+				emptyItem.contextValue = 'add-cluster-prompt';
+				return [emptyItem];
+			}
 			return this._clusters;
 		}
 
 		// Children for an individual cluster (details list)
-		if (element.itemType === 'cluster') {
+		if (element instanceof ClusterTreeItem && element.itemType === 'cluster') {
 			const c = element.cluster;
 			const details: ClusterTreeItem[] = [];
 
@@ -186,43 +189,15 @@ export class ClustersTreeDataProvider
 			}
 		}
 
-		// 3. Fallback default presets if nothing found
-		if (result.length === 0) {
-			result.push(
-				{
-					name: 'Local Slurm Node',
-					hostname: 'localhost',
-					user: os.userInfo().username,
-					port: 22,
-					description: 'Local simulation node / Slurm workstation',
-					isPredefined: true,
-				},
-				{
-					name: 'MareNostrum 5 (BSC)',
-					hostname: 'mn5.bsc.es',
-					user: 'hpc_user',
-					port: 22,
-					description: 'Barcelona Supercomputing Center - Top European HPC',
-					isPredefined: true,
-				},
-				{
-					name: 'Summit OLCF',
-					hostname: 'summit.olcf.ornl.gov',
-					user: 'olcf_researcher',
-					port: 22,
-					description: 'Oak Ridge National Laboratory Supercomputer',
-					isPredefined: true,
-				}
-			);
-		}
-
 		this._clusters = result.map((c) => new ClusterTreeItem(c));
 		const savedName = this._context.workspaceState.get<string>('activeClusterName');
 		const savedMatch = savedName ? this._clusters.find((c) => c.cluster.name === savedName) : null;
 		if (savedMatch) {
 			this._activeCluster = savedMatch.cluster;
-		} else if (!this._activeCluster && this._clusters.length > 0) {
+		} else if (this._clusters.length > 0) {
 			this._activeCluster = this._clusters[0].cluster;
+		} else {
+			this._activeCluster = null;
 		}
 		this._onDidChangeTreeData.fire();
 	}
@@ -363,40 +338,21 @@ export class ClustersTreeDataProvider
 
 					socket.on('timeout', () => {
 						cleanup();
-						// For demonstration/offline fallback, provide simulated realistic latency if hostname is demo
-						if (cluster.isPredefined || host.includes('.es') || host.includes('.gov')) {
-							const simLatency = Math.floor(18 + Math.random() * 25);
-							targetItem.setPingResult(simLatency, true);
-							this._onDidChangeTreeData.fire(targetItem);
-							vscode.window.showInformationMessage(
-								`Cluster "${cluster.name}" ping: ${simLatency} ms (Simulated response).`
-							);
-						} else {
-							targetItem.setPingResult(2500, false);
-							this._onDidChangeTreeData.fire(targetItem);
-							vscode.window.showWarningMessage(
-								`Cluster "${cluster.name}" connection timed out (${host}:${port}).`
-							);
-						}
+						targetItem.setPingResult(2500, false);
+						this._onDidChangeTreeData.fire(targetItem);
+						vscode.window.showWarningMessage(
+							`Cluster "${cluster.name}" connection timed out (${host}:${port}).`
+						);
 						resolve();
 					});
 
 					socket.on('error', (err) => {
 						cleanup();
-						if (cluster.isPredefined || host.includes('.es') || host.includes('.gov')) {
-							const simLatency = Math.floor(22 + Math.random() * 30);
-							targetItem.setPingResult(simLatency, true);
-							this._onDidChangeTreeData.fire(targetItem);
-							vscode.window.showInformationMessage(
-								`Cluster "${cluster.name}" ping: ${simLatency} ms (Simulated fallback).`
-							);
-						} else {
-							targetItem.setPingResult(0, false);
-							this._onDidChangeTreeData.fire(targetItem);
-							vscode.window.showErrorMessage(
-								`Cluster "${cluster.name}" unreachable: ${err.message}`
-							);
-						}
+						targetItem.setPingResult(0, false);
+						this._onDidChangeTreeData.fire(targetItem);
+						vscode.window.showErrorMessage(
+							`Cluster "${cluster.name}" unreachable: ${err.message}`
+						);
 						resolve();
 					});
 				});

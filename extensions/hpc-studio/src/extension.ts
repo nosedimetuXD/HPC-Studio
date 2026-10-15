@@ -11,9 +11,11 @@ import { Structure3DEditorProvider } from './editors/structure3dEditor';
 import { ClustersTreeDataProvider, ClusterTreeItem } from './views/clustersView';
 import { SlurmQueueTreeDataProvider, SlurmJobTreeItem } from './views/slurmQueueView';
 import { SftpExplorerTreeDataProvider, SftpTreeItem } from './views/sftpExplorerView';
+import { AntigravityAgentBridge } from './agent/antigravityAgent';
 
 let supervisor: SidecarSupervisor | null = null;
 let client: BackendClient | null = null;
+let agentBridge: AntigravityAgentBridge | null = null;
 
 export async function activate(context: vscode.ExtensionContext): Promise<{
 	supervisor: SidecarSupervisor;
@@ -287,6 +289,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 		})
 	);
 
+	// Register Antigravity Agent Command
+	agentBridge = new AntigravityAgentBridge();
+	context.subscriptions.push(agentBridge);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand(
+			'hpc-studio.invokeAntigravityAgent',
+			async (prompt: string, sessionId?: string, workingDir?: string) => {
+				if (!agentBridge) {
+					agentBridge = new AntigravityAgentBridge();
+					context.subscriptions.push(agentBridge);
+				}
+				return agentBridge.invoke(prompt, sessionId, workingDir);
+			}
+		)
+	);
+
 	// Auto-start backend if enabled
 	const config = vscode.workspace.getConfiguration('hpc-studio');
 	const autoStart = config.get<boolean>('autoStartSidecar', true);
@@ -308,6 +327,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 }
 
 export async function deactivate(): Promise<void> {
+	if (agentBridge) {
+		agentBridge.dispose();
+		agentBridge = null;
+	}
 	if (client) {
 		client.dispose();
 		client = null;

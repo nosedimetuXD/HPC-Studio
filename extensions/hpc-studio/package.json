@@ -9,7 +9,8 @@
 		"vscode": "^1.90.0"
 	},
 	"activationEvents": [
-		"onStartupFinished"
+		"onStartupFinished",
+		"onCommand:hpc-studio.invokeAntigravityAgent"
 	],
 	"categories": [
 		"Programming Languages",
@@ -46,6 +47,11 @@
 			{
 				"command": "hpc-studio.checkStatus",
 				"title": "HPC Studio: Show Backend Status",
+				"category": "HPC Studio"
+			},
+			{
+				"command": "hpc-studio.invokeAntigravityAgent",
+				"title": "HPC Studio: Invoke Antigravity Agent",
 				"category": "HPC Studio"
 			},
 			{
@@ -208,6 +214,11 @@
 					],
 					"default": "info",
 					"description": "Log verbosity level for HPC Studio backend server."
+				},
+				"hpc-studio.antigravityPath": {
+					"type": "string",
+					"default": "",
+					"description": "Custom path to the Antigravity CLI executable (agy). Leave empty to use ~/.local/bin/agy or system PATH."
 				}
 			}
 		},

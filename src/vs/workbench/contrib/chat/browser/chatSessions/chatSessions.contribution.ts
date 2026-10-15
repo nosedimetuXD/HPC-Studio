@@ -373,6 +373,7 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 		@IThemeService private readonly _themeService: IThemeService,
 		@ILabelService private readonly _labelService: ILabelService,
 		@IInstantiationService private readonly _instantiationService: IInstantiationService,
+		@ICommandService private readonly _commandService: ICommandService,
 	) {
 		super();
 
@@ -429,10 +430,34 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 
 		this._register(this._chatAgentService.registerAgentImplementation(SessionType.AgentHostAntigravity, {
 			invoke: async (request, progress, _history, _token) => {
-				progress([{
-					kind: 'markdownContent',
-					content: new MarkdownString(localize('antigravity.response', "### 🚀 Antigravity Agent Harness (HPC Studio)\n\nConnected to the local **Antigravity** runtime.\n\nTask received: *\"{0}\"*\n\n> [!NOTE]\n> Antigravity is active as your primary autonomous coding harness. You can run HPC simulations, debug code, and manage Slurm jobs directly.", request.message))
-				}]);
+				try {
+					const workingDir = request.workingDirectory?.fsPath;
+					const sessionKey = request.sessionResource?.toString();
+					const response = await this._commandService.executeCommand<string>(
+						'hpc-studio.invokeAntigravityAgent',
+						request.message,
+						sessionKey,
+						workingDir
+					);
+
+					if (response && response.trim()) {
+						progress([{
+							kind: 'markdownContent',
+							content: new MarkdownString(response.trim())
+						}]);
+					} else {
+						progress([{
+							kind: 'markdownContent',
+							content: new MarkdownString(localize('antigravity.noResponse', "Antigravity completed the request with no text output."))
+						}]);
+					}
+				} catch (err: unknown) {
+					const msg = err instanceof Error ? err.message : String(err);
+					progress([{
+						kind: 'markdownContent',
+						content: new MarkdownString(`⚠️ **Antigravity Error**: ${msg}`)
+					}]);
+				}
 				return {};
 			}
 		}));

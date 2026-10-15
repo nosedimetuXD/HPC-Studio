@@ -165,6 +165,7 @@ export function getConfiguredSessionTypePickerAvailability(
  */
 export class SessionTypePickerActionItem extends ChatInputPickerActionViewItem {
 	private _sessionTypeItems: ISessionTypeItem[] = [];
+	private _optimisticSelectedType: AgentSessionTarget | undefined;
 	protected readonly _isSessionsWindow: boolean;
 
 	constructor(
@@ -298,6 +299,7 @@ export class SessionTypePickerActionItem extends ChatInputPickerActionViewItem {
 			recordUserSelectedSessionType(this.storageService, this.configurationService, this.chatSessionsService, this.workspaceContextService.getWorkspace(), sessionTypeItem.type, this.agentHostEnablementService.enabled.get());
 		}
 
+		this._optimisticSelectedType = sessionTypeItem.type;
 		if (this.delegate.setActiveSessionProvider) {
 			// Use provided setter (for welcome view)
 			this.delegate.setActiveSessionProvider(sessionTypeItem.type);
@@ -345,7 +347,11 @@ export class SessionTypePickerActionItem extends ChatInputPickerActionViewItem {
 	}
 
 	protected _getSelectedSessionType(): AgentSessionTarget | undefined {
-		return this.delegate.getActiveSessionProvider();
+		const active = this.delegate.getActiveSessionProvider();
+		if (this._optimisticSelectedType && active === this._optimisticSelectedType) {
+			this._optimisticSelectedType = undefined;
+		}
+		return this._optimisticSelectedType ?? active;
 	}
 
 	protected _getAdditionalActions(): IActionWidgetDropdownAction[] {

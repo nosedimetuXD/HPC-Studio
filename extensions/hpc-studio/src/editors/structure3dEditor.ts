@@ -207,27 +207,48 @@ export class Structure3DEditorProvider implements vscode.CustomTextEditorProvide
 	<!-- Top Toolbar -->
 	<header class="toolbar">
 		<div class="toolbar-title">
-			<span style="font-size: 14px;">⚛️</span>
+			<svg class="toolbar-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+				<path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 1.2a5.8 5.8 0 1 1 0 11.6 5.8 5.8 0 0 1 0-11.6zM8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 1.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/>
+			</svg>
 			<span>HPC 3D</span>
 		</div>
 		<button id="btn-toggle-cell" class="toolbar-btn active" title="Toggle Unit Cell Box">
-			<span>📦 Unit Cell</span>
+			<svg class="toolbar-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+				<path d="M8.2 1.14a.5.5 0 0 0-.4 0l-6 3a.5.5 0 0 0-.3.45v6.82a.5.5 0 0 0 .3.45l6 3a.5.5 0 0 0 .4 0l6-3a.5.5 0 0 0 .3-.45V4.59a.5.5 0 0 0-.3-.45l-6-3zM8 2.12l5 2.5-5 2.5-5-2.5 5-2.5zM2.5 5.74l5 2.5v5.02l-5-2.5V5.74zm6 7.52V8.24l5-2.5v5.02l-5 2.5z"/>
+			</svg>
+			<span>Unit Cell</span>
 		</button>
 		<button id="btn-toggle-bonds" class="toolbar-btn active" title="Toggle Atomic Bonds">
-			<span>🔗 Bonds</span>
+			<svg class="toolbar-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+				<path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/>
+				<path d="M6.586 4.672A3 3 0 0 0 7.414 10.5l.586-.586a1 1 0 0 0 .154-.199 2 2 0 0 1-.86-3.337L9.12 4.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 0 0-4.243-4.243L6.586 4.672z"/>
+			</svg>
+			<span>Bonds</span>
 		</button>
 		<button id="btn-toggle-labels" class="toolbar-btn" title="Toggle Atom Labels">
-			<span>🏷️ Labels</span>
+			<svg class="toolbar-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+				<path d="M2 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l6.414 6.414a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0L2.293 8.293A1 1 0 0 1 2 7.586V2zm3.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
+			</svg>
+			<span>Labels</span>
 		</button>
 		<button id="btn-reset-cam" class="toolbar-btn" title="Reset Camera View">
-			<span>🎯 Reset</span>
+			<svg class="toolbar-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+				<path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0-1A6 6 0 1 0 8 2a6 6 0 0 0 0 12zm0-2a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm0-1a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-2a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+			</svg>
+			<span>Reset</span>
 		</button>
 		<div class="toolbar-sep"></div>
 		<button id="btn-view-text" class="toolbar-btn" title="Switch to Plain Text Editor">
-			<span>📄 View as Text</span>
+			<svg class="toolbar-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+				<path d="M4 0h5.5v1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h1V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm6 0v4h4L10 0zM5 8h6v1H5V8zm0 2h4v1H5v-1zm0-4h3v1H5V6z"/>
+			</svg>
+			<span>Text</span>
 		</button>
 		<button id="btn-gen-qe" class="toolbar-btn primary" title="Generate Quantum ESPRESSO input file">
-			<span>⚡ Generate QE Input</span>
+			<svg class="toolbar-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+				<path d="M7.5 1v5.5H3.75l5.25 8.5V9.5h3.75L7.5 1z"/>
+			</svg>
+			<span>Generate QE Input</span>
 		</button>
 	</header>
 

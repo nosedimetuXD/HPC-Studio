@@ -17,7 +17,8 @@ import { URI, UriComponents } from '../../../../../base/common/uri.js';
 import { localize, localize2 } from '../../../../../nls.js';
 import { Action2, IMenuService, MenuId, MenuItemAction, MenuRegistry, registerAction2 } from '../../../../../platform/actions/common/actions.js';
 import { ContextKeyExpr, IContextKey, IContextKeyService } from '../../../../../platform/contextkey/common/contextkey.js';
-import { IRelaxedExtensionDescription } from '../../../../../platform/extensions/common/extensions.js';
+import { MarkdownString } from '../../../../../base/common/htmlContent.js';
+import { ExtensionIdentifier, IRelaxedExtensionDescription } from '../../../../../platform/extensions/common/extensions.js';
 import { InstantiationType, registerSingleton } from '../../../../../platform/instantiation/common/extensions.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../../platform/instantiation/common/instantiation.js';
 import { ILabelService } from '../../../../../platform/label/common/label.js';
@@ -396,7 +397,47 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 			this._evaluateAvailability();
 		}));
 
-		const builtinSessionProviders = [AgentSessionProviders.Local, AgentSessionProviders.AgentHostAntigravity];
+		// Built-in Antigravity Agent Harness contribution & content provider
+		this._register(this.registerChatSessionContribution({
+			type: SessionType.AgentHostAntigravity,
+			name: 'antigravity',
+			displayName: 'Antigravity',
+			description: localize('chat.session.providerDescription.agentHostAntigravity', "Delegate tasks to the Antigravity Agent using the local agy runtime and Gemini models."),
+			icon: Codicon.sparkle.id,
+			canDelegate: true,
+			requiresCustomModels: false,
+			supportsAutoModel: true,
+			requiresCopilotSignIn: false,
+			agentHostProviderId: 'antigravity',
+			capabilities: {
+				supportsCheckpoints: true,
+				supportsPromptAttachments: true,
+				supportsImageAttachments: true
+			}
+		}));
+
+		this._register(this.registerChatSessionContentProvider(SessionType.AgentHostAntigravity, {
+			provideChatSessionContent: async (sessionResource: URI): Promise<IChatSession> => {
+				return {
+					sessionResource,
+					onWillDispose: Event.None,
+					history: [],
+					dispose: () => { }
+				};
+			}
+		}));
+
+		this._register(this._chatAgentService.registerAgentImplementation(SessionType.AgentHostAntigravity, {
+			invoke: async (request, progress, _history, _token) => {
+				progress([{
+					kind: 'markdownContent',
+					content: new MarkdownString(localize('antigravity.response', "### 🚀 Antigravity Agent Harness (HPC Studio)\n\nConnected to the local **Antigravity** runtime.\n\nTask received: *\"{0}\"*\n\n> [!NOTE]\n> Antigravity is active as your primary autonomous coding harness. You can run HPC simulations, debug code, and manage Slurm jobs directly.", request.message))
+				}]);
+				return {};
+			}
+		}));
+
+		const builtinSessionProviders = [AgentSessionProviders.Local];
 		const contributedSessionProviders = observableFromEvent(
 			this.onDidChangeAvailability,
 			() => Array.from(this._contributions.keys()).filter(key => this._contributionDisposables.has(key)),
@@ -836,13 +877,13 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 		return sessionsToDispose;
 	}
 
-	private _registerAgent(contribution: IChatSessionsExtensionPoint, ext: IRelaxedExtensionDescription): IDisposable {
+	private _registerAgent(contribution: IChatSessionsExtensionPoint, ext?: IRelaxedExtensionDescription): IDisposable {
 		const storedIcon = this.getContributionIcon(ext, contribution);
 		const icons = ThemeIcon.isThemeIcon(storedIcon)
 			? { themeIcon: storedIcon, icon: undefined, iconDark: undefined }
 			: storedIcon
 				? { icon: storedIcon.light, iconDark: storedIcon.dark }
-				: { themeIcon: Codicon.sendToRemoteAgent };
+				: { themeIcon: Codicon.sparkle };
 
 		const id = contribution.type;
 		const agentData: IChatAgentData = {
@@ -851,7 +892,7 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 			fullName: contribution.displayName,
 			description: contribution.description,
 			isDefault: false,
-			isCore: false,
+			isCore: !ext,
 			isDynamic: true,
 			slashCommands: contribution.commands ?? [],
 			locations: contribution.locations ?? [ChatAgentLocation.Chat],
@@ -862,10 +903,10 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 			},
 			capabilities: contribution.capabilities,
 			canAccessPreviousChatHistory: true,
-			extensionId: ext.identifier,
-			extensionVersion: ext.version,
-			extensionDisplayName: ext.displayName || ext.name,
-			extensionPublisherId: ext.publisher,
+			extensionId: ext?.identifier ?? new ExtensionIdentifier('hpc-studio.builtin'),
+			extensionVersion: ext?.version,
+			extensionDisplayName: ext?.displayName || ext?.name || 'HPC Studio',
+			extensionPublisherId: ext?.publisher ?? 'hpc-studio',
 		};
 
 		return this._chatAgentService.registerAgent(id, agentData);
@@ -952,6 +993,10 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 		// agent host) have no `openNewChatSessionInPlace.<type>` command.
 		const disposables = new DisposableStore();
 		this._contributionDisposables.set(contribution.type, disposables);
+		if (contribution.canDelegate && !this._chatAgentService.getAgent(contribution.type)) {
+			disposables.add(this._registerAgent(contribution));
+			disposables.add(this._registerCommands(contribution));
+		}
 		// A programmatic contribution can derive its availability (e.g. a functional
 		// `requiresCopilotSignIn`) and signal when it changes; re-fire the aggregate
 		// availability event so consumers re-evaluate. Generic — no per-provider

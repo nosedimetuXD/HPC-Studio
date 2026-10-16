@@ -138,14 +138,31 @@ function installHeaders() {
 	const local = getHeaderInfo(path.join(import.meta.dirname, '..', '..', '.npmrc'));
 	const remote = getHeaderInfo(path.join(import.meta.dirname, '..', '..', 'remote', '.npmrc'));
 
+	function runNodeGypWithRetry(args: string[]) {
+		for (let i = 1; i <= 5; i++) {
+			try {
+				child_process.execFileSync(node_gyp, args, { shell: true });
+				return;
+			} catch (err) {
+				if (i === 5) {
+					throw err;
+				}
+				console.warn(`node-gyp ${args.join(' ')} failed (attempt ${i}/5). Retrying in 5s...`);
+				try {
+					child_process.execSync(process.platform === 'win32' ? 'powershell -Command "Start-Sleep -Seconds 5"' : 'sleep 5');
+				} catch { }
+			}
+		}
+	}
+
 	if (local !== undefined) {
 		// Both disturl and target come from a file checked into our repository
-		child_process.execFileSync(node_gyp, ['install', '--dist-url', local.disturl, local.target], { shell: true });
+		runNodeGypWithRetry(['install', '--dist-url', local.disturl, local.target]);
 	}
 
 	if (remote !== undefined) {
 		// Both disturl and target come from a file checked into our repository
-		child_process.execFileSync(node_gyp, ['install', '--dist-url', remote.disturl, remote.target], { shell: true });
+		runNodeGypWithRetry(['install', '--dist-url', remote.disturl, remote.target]);
 	}
 
 	// Overlay any custom headers shipped in build/npm/gyp/custom-headers on top of

@@ -23,7 +23,7 @@ const root = path.dirname(import.meta.dirname);
 const commit = getVersion(root);
 const linuxDesktopName = product.linuxDesktopName;
 
-const linuxPackageRevision = Math.floor(new Date().getTime() / 1000);
+const linuxPackageRevision = process.env['PACKAGE_REVISION'] !== undefined ? process.env['PACKAGE_REVISION'] : '';
 
 function getDebPackageArch(arch: string): string {
 	switch (arch) {
@@ -89,7 +89,7 @@ function prepareDebPackage(arch: string) {
 				const that = this;
 				gulp.src('resources/linux/debian/control.template', { base: '.' })
 					.pipe(replace('@@NAME@@', product.applicationName))
-					.pipe(replace('@@VERSION@@', packageJson.version + '-' + linuxPackageRevision))
+					.pipe(replace('@@VERSION@@', linuxPackageRevision ? `${packageJson.version}-${linuxPackageRevision}` : packageJson.version))
 					.pipe(replace('@@ARCHITECTURE@@', debArch))
 					.pipe(replace('@@DEPENDS@@', dependencies.join(', ')))
 					.pipe(replace('@@RECOMMENDS@@', debianRecommendedDependencies.join(', ')))
@@ -199,7 +199,7 @@ function prepareRpmPackage(arch: string) {
 			.pipe(replace('@@DESKTOP_NAME@@', linuxDesktopName))
 			.pipe(replace('@@ICON@@', product.linuxIconName))
 			.pipe(replace('@@VERSION@@', packageJson.version))
-			.pipe(replace('@@RELEASE@@', linuxPackageRevision.toString()))
+			.pipe(replace('@@RELEASE@@', process.env['PACKAGE_RELEASE'] ?? (linuxPackageRevision || '1')))
 			.pipe(replace('@@ARCHITECTURE@@', rpmArch))
 			.pipe(replace('@@LICENSE@@', product.licenseName))
 			.pipe(replace('@@QUALITY@@', (product as typeof product & { quality?: string }).quality || '@@QUALITY@@'))

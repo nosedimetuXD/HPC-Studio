@@ -1,0 +1,275 @@
+name: Release HPC Studio Desktop & Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish GitHub Release'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=8192"
+
+jobs:
+  # ============================================================================
+  # 1. Package Extension (VSIX)
+  # ============================================================================
+  package-extension:
+    name: Package Extension (VSIX)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Extension Dependencies
+        working-directory: extensions/hpc-studio
+        run: |
+          npm ci --prefer-offline || npm install
+
+      - name: Build Extension (VSIX)
+        working-directory: extensions/hpc-studio
+        run: |
+          mkdir -p dist
+          npx --yes @vscode/vsce package --no-dependencies --out dist/hpc-studio.vsix
+          cp dist/hpc-studio.vsix dist/hpc-studio-1.0.0.vsix
+
+      - name: Upload Extension Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hpc-studio-extension-vsix
+          path: extensions/hpc-studio/dist/*
+          retention-days: 7
+
+  # ============================================================================
+  # 2. Build Linux Desktop (deb, rpm, tar.gz)
+  # ============================================================================
+  build-linux:
+    name: Build Linux Desktop (x64)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot rpm libkrb5-dev libx11-dev libxkbfile-dev libsecret-1-dev librsvg2-bin
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Package HPC Studio for Linux
+        run: |
+          chmod +x scripts/package-hpc-studio.sh
+          ./scripts/package-hpc-studio.sh
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hpc-studio-linux-x64
+          path: dist/*
+          retention-days: 7
+
+  # ============================================================================
+  # 3. Build Windows Desktop (x64)
+  # ============================================================================
+  build-windows:
+    name: Build Windows Desktop (x64)
+    runs-on: windows-2022
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\npm-cache
+            node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile Windows IDE
+        run: npm run gulp -- vscode-win32-x64-min
+
+      - name: Package Windows Zip & Installer
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          New-Item -ItemType Directory -Force -Path dist
+          
+          # Archive portable package
+          Write-Host "Creating portable ZIP archive..."
+          Compress-Archive -Path "..\VSCode-win32-x64\*" -DestinationPath "dist\hpc-studio-win32-x64-$version.zip" -CompressionLevel Optimal
+          
+          # Build InnoSetup installer if available
+          try {
+            npm run gulp -- vscode-win32-x64-user-setup
+            $installer = Get-ChildItem -Path ".build\win32-x64\user-setup" -Filter "*.exe" -Recurse | Select-Object -First 1
+            if ($installer) {
+              Copy-Item $installer.FullName -Destination "dist\hpc-studio-$version-setup.exe"
+              Write-Host "Installer copied to dist\hpc-studio-$version-setup.exe"
+            }
+          } catch {
+            Write-Warning "InnoSetup build skipped or not available: $_"
+          }
+          
+          Get-ChildItem -Path dist
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hpc-studio-win32-x64
+          path: dist/*
+          retention-days: 7
+
+  # ============================================================================
+  # 4. Build macOS Desktop (Universal / arm64 / x64)
+  # ============================================================================
+  build-macos:
+    name: Build macOS Desktop
+    runs-on: macos-14
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache Node Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Compile macOS Apple Silicon (arm64)
+        run: npm run gulp -- vscode-darwin-arm64-min
+
+      - name: Compile macOS Intel (x64)
+        run: npm run gulp -- vscode-darwin-x64-min
+
+      - name: Package macOS Archives
+        run: |
+          VERSION=$(node -p 'require("./package.json").version')
+          mkdir -p dist
+          
+          if [ -d "../VSCode-darwin-arm64" ]; then
+            echo "Packaging macOS arm64..."
+            (cd ../VSCode-darwin-arm64 && zip -r -y "${GITHUB_WORKSPACE}/dist/hpc-studio-darwin-arm64-${VERSION}.zip" .)
+          fi
+          
+          if [ -d "../VSCode-darwin-x64" ]; then
+            echo "Packaging macOS x64..."
+            (cd ../VSCode-darwin-x64 && zip -r -y "${GITHUB_WORKSPACE}/dist/hpc-studio-darwin-x64-${VERSION}.zip" .)
+          fi
+          
+          ls -lh dist/
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hpc-studio-darwin
+          path: dist/*
+          retention-days: 7
+
+  # ============================================================================
+  # 5. Publish GitHub Release
+  # ============================================================================
+  publish-release:
+    name: Publish Release to GitHub
+    needs: [build-linux, build-windows, build-macos, package-extension]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish_release == 'true'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Release Assets Directory
+        run: mkdir -p release-assets
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: hpc-studio-linux-x64
+          path: release-assets
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: hpc-studio-win32-x64
+          path: release-assets
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: hpc-studio-darwin
+          path: release-assets
+
+      - name: Download Extension Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hpc-studio-extension-vsix
+          path: release-assets
+
+      - name: Generate Checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

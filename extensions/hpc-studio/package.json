@@ -4,6 +4,7 @@
 	"description": "Core integration engine for HPC Studio: Sidecar supervisor, cluster connectivity, and scientific simulation languages",
 	"version": "1.0.0",
 	"publisher": "hpc-studio",
+	"icon": "media/icons/hpc-studio.png",
 	"license": "MIT",
 	"engines": {
 		"vscode": "^1.90.0"
@@ -506,7 +507,8 @@
 	},
 	"scripts": {
 		"compile": "gulp compile-extension:hpc-studio",
-		"watch": "gulp watch-extension:hpc-studio"
+		"watch": "gulp watch-extension:hpc-studio",
+		"package": "vsce package --no-dependencies"
 	},
 	"devDependencies": {
 		"@types/node": "24.x"

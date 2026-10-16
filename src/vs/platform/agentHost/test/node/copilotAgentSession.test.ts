@@ -6905,7 +6905,7 @@ suite('CopilotAgentSession', () => {
 		assert.deepStrictEqual(mockSession.sendRequests, []);
 	});
 
-	test('caches runtime slash command availability across checks', async () => {
+	test('caches runtime slash commands across listings', async () => {
 		const { session, mockSession } = await createAgentSession(disposables);
 		mockSession.commandListResult = {
 			commands: [
@@ -6931,14 +6931,12 @@ suite('CopilotAgentSession', () => {
 		};
 
 		assert.deepStrictEqual({
-			env: await session.hasRuntimeSlashCommand('env'),
-			review: await session.hasRuntimeSlashCommand('review'),
-			skill: await session.hasRuntimeSlashCommand('not-a-builtin'),
+			first: (await session.getRuntimeSlashCommands()).map(command => command.name),
+			second: (await session.getRuntimeSlashCommands()).map(command => command.name),
 			commandListCalls: mockSession.commandListCalls,
 		}, {
-			env: true,
-			review: true,
-			skill: true,
+			first: ['sandbox', 'env', 'review', 'not-a-builtin'],
+			second: ['sandbox', 'env', 'review', 'not-a-builtin'],
 			commandListCalls: [{ includeBuiltins: true, includeSkills: true, includeClientCommands: true }],
 		});
 	});
@@ -13539,7 +13537,7 @@ Use the attached image as context.
 			});
 		}
 
-		test('does not signal cleanup when send fails', async () => {
+		test('clears the pending steering message without starting a turn when send fails', async () => {
 			const { session, mockSession, signals } = await createAgentSession(disposables);
 
 			mockSession.send = async () => { throw new Error('send failed'); };
@@ -13548,7 +13546,7 @@ Use the attached image as context.
 
 			const consumed = signals.find(s => s.kind === 'steering_consumed');
 			const turnStarted = signals.find(s => s.kind === 'action' && (s as IAgentActionSignal).action.type === ActionType.ChatTurnStarted);
-			assert.strictEqual(consumed, undefined, 'should not fire steering_consumed on failure');
+			assert.deepStrictEqual(consumed, { kind: 'steering_consumed', chat: session.chatChannelUri, id: 'steer-fail' });
 			assert.strictEqual(turnStarted, undefined, 'should not start a new turn on failure');
 		});
 	});

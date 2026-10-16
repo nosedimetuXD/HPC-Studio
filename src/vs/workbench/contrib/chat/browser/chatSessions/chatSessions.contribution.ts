@@ -1280,6 +1280,14 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 			dispose: () => {
 				this._contentProviders.delete(chatSessionType);
 
+				for (const [key, pending] of this._pendingSessionResolutions) {
+					const type = getChatSessionType(URI.parse(key));
+					if (type === chatSessionType || this._resolveToPrimaryType(type) === chatSessionType) {
+						this._pendingSessionResolutions.delete(key);
+						pending.cancellationTokenSource.cancel();
+					}
+				}
+
 				this._onDidChangeContentProviderSchemes.fire({ added: [], removed: [chatSessionType] });
 
 				// Remove all sessions that were created by this provider
@@ -1836,6 +1844,8 @@ export type NewChatSessionOpenOptions = {
 	 * even if the user activated a different editor during the async setup.
 	 */
 	readonly replaceEditorForResource?: URI;
+	/** Revalidate the source after asynchronous setup, before changing its displayed conversation. */
+	readonly beforeOpen?: () => void;
 };
 
 export async function openChatSession(accessor: ServicesAccessor, openOptions: NewChatSessionOpenOptions, chatSendOptions?: NewChatSessionSendOptions): Promise<URI | undefined> {
@@ -1868,9 +1878,11 @@ export async function openChatSession(accessor: ServicesAccessor, openOptions: N
 	let sessionsListSuppression: IDisposable | undefined;
 	let transitionProgress: DeferredPromise<void> | undefined;
 	try {
+		openOptions.beforeOpen?.();
 		switch (openOptions.position) {
 			case ChatSessionPosition.Sidebar: {
 				const view = await viewsService.openView(ChatViewId) as ChatViewPane;
+				openOptions.beforeOpen?.();
 				if (chatSendOptions?.importConversation) {
 					sessionsListSuppression = view.beginSessionsListSuppression();
 					// Show the chat view's working indicator for the whole transition (the
@@ -1927,9 +1939,12 @@ export async function openChatSession(accessor: ServicesAccessor, openOptions: N
 			default: assertNever(openOptions.position, `Unknown chat session position: ${openOptions.position}`);
 		}
 	} catch (e) {
-		logService.error(`Failed to open '${openOptions.type}' chat session`, e);
 		sessionsListSuppression?.dispose();
 		transitionProgress?.complete();
+		if (openOptions.beforeOpen && isCancellationError(e)) {
+			throw e;
+		}
+		logService.error(`Failed to open '${openOptions.type}' chat session`, e);
 		return undefined;
 	}
 

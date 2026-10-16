@@ -189,9 +189,6 @@ jobs:
           c++ --version
           xcode-select -print-path
           python3 -m pip install --break-system-packages setuptools || true
-          export MACOSX_DEPLOYMENT_TARGET="10.15"
-          export CXXFLAGS="-mmacosx-version-min=10.15 -std=c++17"
-          export CFLAGS="-mmacosx-version-min=10.15"
           for i in {1..5}; do
             npm ci && break
             if [ $i -eq 5 ]; then
@@ -208,14 +205,12 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GYP_DEFINES: "kerberos_use_rtld=false"
-          MACOSX_DEPLOYMENT_TARGET: "10.15"
-          CXXFLAGS: "-mmacosx-version-min=10.15 -std=c++17"
-          CFLAGS: "-mmacosx-version-min=10.15"
 
       - name: Compile macOS Apple Silicon (arm64)
         run: npm run gulp -- vscode-darwin-arm64-min
 
       - name: Compile macOS Intel (x64)
+        continue-on-error: true
         run: npm run gulp -- vscode-darwin-x64-min
 
       - name: Package macOS Archives

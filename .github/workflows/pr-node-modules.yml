@@ -9,6 +9,7 @@ permissions: {}
 
 jobs:
   compile:
+    if: github.repository == 'microsoft/vscode'
     name: Compile
     runs-on: [ self-hosted, 1ES.Pool=1es-vscode-oss-ubuntu-22.04-x64, "JobId=compile-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}" ]
     steps:
@@ -78,6 +79,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.VSCODE_OSS }}
 
   linux:
+    if: github.repository == 'microsoft/vscode'
     name: Linux
     runs-on: [ self-hosted, 1ES.Pool=1es-vscode-oss-ubuntu-22.04-x64, "JobId=linux-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}" ]
     env:
@@ -164,6 +166,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.VSCODE_OSS }}
 
   macOS:
+    if: github.repository == 'microsoft/vscode'
     name: macOS
     runs-on: macos-26-xlarge
     env:
@@ -239,6 +242,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.VSCODE_OSS }}
 
   windows:
+    if: github.repository == 'microsoft/vscode'
     name: Windows
     runs-on: [ self-hosted, 1ES.Pool=1es-vscode-oss-windows-2022-x64, "JobId=windows-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}" ]
     env:
@@ -314,6 +318,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.VSCODE_OSS }}
 
   copilot-linux:
+    if: github.repository == 'microsoft/vscode'
     name: Copilot (Linux)
     runs-on: [ self-hosted, 1ES.Pool=1es-vscode-oss-ubuntu-22.04-x64, "JobId=copilot-linux-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}" ]
     steps:
@@ -347,6 +352,7 @@ jobs:
         uses: ./.github/actions/save-node-modules
 
   copilot-windows:
+    if: github.repository == 'microsoft/vscode'
     name: Copilot (Windows)
     runs-on: [ self-hosted, 1ES.Pool=1es-vscode-oss-windows-2022-x64, "JobId=copilot-windows-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}" ]
     steps:

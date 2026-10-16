@@ -97,6 +97,18 @@
 				"icon": "$(add)"
 			},
 			{
+				"command": "hpc-studio.addQuantumMobile",
+				"title": "HPC Studio: Connect to Quantum Mobile (VirtualBox / Docker)",
+				"category": "HPC Studio",
+				"icon": "$(vm)"
+			},
+			{
+				"command": "hpc-studio.quantumMobileGuide",
+				"title": "HPC Studio: Open Quantum Mobile Setup Guide",
+				"category": "HPC Studio",
+				"icon": "$(book)"
+			},
+			{
 				"command": "hpc-studio.openTunnel",
 				"title": "HPC Studio: Open SSH Tunnel",
 				"category": "HPC Studio",
@@ -393,9 +405,19 @@
 					"group": "navigation@1"
 				},
 				{
-					"command": "hpc-studio.refreshClusters",
+					"command": "hpc-studio.addQuantumMobile",
 					"when": "view == hpc-studio.clustersView",
 					"group": "navigation@2"
+				},
+				{
+					"command": "hpc-studio.quantumMobileGuide",
+					"when": "view == hpc-studio.clustersView",
+					"group": "navigation@3"
+				},
+				{
+					"command": "hpc-studio.refreshClusters",
+					"when": "view == hpc-studio.clustersView",
+					"group": "navigation@4"
 				},
 				{
 					"command": "hpc-studio.submitJob",

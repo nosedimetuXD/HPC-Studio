@@ -12,6 +12,14 @@ import { ClusterConfig } from '../client';
 
 export { ClusterConfig } from '../client';
 
+export const QUANTUM_MOBILE_PRESET: ClusterConfig = {
+	name: 'Quantum Mobile (VirtualBox)',
+	hostname: '127.0.0.1',
+	port: 2222,
+	user: 'max',
+	description: 'Local simulation VM for materials science (Quantum ESPRESSO, AiiDA, Slurm)',
+};
+
 export type ClusterItemType = 'cluster' | 'cluster-detail';
 
 export class ClusterTreeItem extends vscode.TreeItem {
@@ -36,7 +44,8 @@ export class ClusterTreeItem extends vscode.TreeItem {
 			const userInfo = cluster.user ? `${cluster.user}@` : '';
 			const portInfo = cluster.port && cluster.port !== 22 ? `:${cluster.port}` : '';
 			this.description = `${userInfo}${cluster.hostname}${portInfo}`;
-			this.iconPath = new vscode.ThemeIcon('server');
+			const isVM = cluster.hostname === '127.0.0.1' && cluster.port === 2222;
+			this.iconPath = new vscode.ThemeIcon(isVM ? 'vm' : 'server');
 			this.updateTooltip();
 		} else {
 			this.contextValue = 'cluster-detail';
@@ -62,9 +71,16 @@ export class ClusterTreeItem extends vscode.TreeItem {
 		const userInfo = this.cluster.user ? `${this.cluster.user}@` : '';
 		const portInfo = this.cluster.port && this.cluster.port !== 22 ? `:${this.cluster.port}` : '';
 		this.description = `${userInfo}${this.cluster.hostname}${portInfo} (${latencyMs}ms)`;
-		this.iconPath = online
-			? new vscode.ThemeIcon('server-process', new vscode.ThemeColor('charts.green'))
-			: new vscode.ThemeIcon('server', new vscode.ThemeColor('charts.red'));
+		const isVM = this.cluster.hostname === '127.0.0.1' && this.cluster.port === 2222;
+		if (isVM) {
+			this.iconPath = online
+				? new vscode.ThemeIcon('vm-running', new vscode.ThemeColor('charts.green'))
+				: new vscode.ThemeIcon('vm', new vscode.ThemeColor('charts.red'));
+		} else {
+			this.iconPath = online
+				? new vscode.ThemeIcon('server-process', new vscode.ThemeColor('charts.green'))
+				: new vscode.ThemeIcon('server', new vscode.ThemeColor('charts.red'));
+		}
 		this.updateTooltip();
 	}
 
@@ -135,15 +151,31 @@ export class ClustersTreeDataProvider
 	public getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
 		if (!element) {
 			if (this._clusters.length === 0) {
-				const emptyItem = new vscode.TreeItem('Add Remote Cluster...', vscode.TreeItemCollapsibleState.None);
-				emptyItem.iconPath = new vscode.ThemeIcon('add');
-				emptyItem.command = {
-					command: 'hpc-studio.addCluster',
-					title: 'Add Remote Cluster...',
+				const qmItem = new vscode.TreeItem(
+					'Connect to Quantum Mobile (VirtualBox / Docker)...',
+					vscode.TreeItemCollapsibleState.None
+				);
+				qmItem.iconPath = new vscode.ThemeIcon('vm');
+				qmItem.command = {
+					command: 'hpc-studio.addQuantumMobile',
+					title: 'Connect to Quantum Mobile (VirtualBox / Docker)...',
 				};
-				emptyItem.tooltip = 'No remote clusters registered. Click to add a remote HPC cluster.';
-				emptyItem.contextValue = 'add-cluster-prompt';
-				return [emptyItem];
+				qmItem.tooltip = 'Quick connect to local Quantum Mobile VM or Docker container (127.0.0.1:2222, user: max)';
+				qmItem.contextValue = 'add-quantum-mobile-prompt';
+
+				const customItem = new vscode.TreeItem(
+					'Add Custom Remote Cluster...',
+					vscode.TreeItemCollapsibleState.None
+				);
+				customItem.iconPath = new vscode.ThemeIcon('add');
+				customItem.command = {
+					command: 'hpc-studio.addCluster',
+					title: 'Add Custom Remote Cluster...',
+				};
+				customItem.tooltip = 'Click to add a custom remote HPC cluster (SSH).';
+				customItem.contextValue = 'add-cluster-prompt';
+
+				return [qmItem, customItem];
 			}
 			return this._clusters;
 		}
@@ -383,6 +415,9 @@ export class ClustersTreeDataProvider
 
 		terminal.show();
 		terminal.sendText(`echo "=== Connecting to HPC Cluster: ${cluster.name} ==="`);
+		if (cluster.hostname === '127.0.0.1' && cluster.port === 2222) {
+			terminal.sendText(`echo "💡 Tip: Default Quantum Mobile credentials -> user: max, password: moritz"`);
+		}
 		terminal.sendText(sshCommand);
 		this.setActiveCluster(cluster);
 	}
@@ -434,9 +469,452 @@ export class ClustersTreeDataProvider
 	}
 
 	/**
+	 * Add or connect to Quantum Mobile preset
+	 */
+	public async addQuantumMobile(): Promise<void> {
+		const preset = { ...QUANTUM_MOBILE_PRESET };
+
+		const isOnline = await vscode.window.withProgress(
+			{
+				location: vscode.ProgressLocation.Notification,
+				title: 'Checking Quantum Mobile VM connectivity (127.0.0.1:2222)...',
+				cancellable: false,
+			},
+			async () => {
+				return await this.testTcpPort(preset.hostname, preset.port || 2222, 2500);
+			}
+		);
+
+		const savePreset = async (): Promise<ClusterTreeItem | undefined> => {
+			const config = vscode.workspace.getConfiguration('hpc-studio');
+			const existing = config.get<ClusterConfig[]>('clusters', []);
+			const updated = [
+				...existing.filter(
+					(c) => c.name !== preset.name && !(c.hostname === preset.hostname && c.port === preset.port)
+				),
+				preset,
+			];
+			await config.update('clusters', updated, vscode.ConfigurationTarget.Global);
+			this.loadClusters();
+			const created = this._clusters.find((c) => c.cluster.name === preset.name);
+			if (created) {
+				this.setActiveCluster(created.cluster);
+			}
+			return created;
+		};
+
+		if (isOnline) {
+			const item = await savePreset();
+			const choice = await vscode.window.showInformationMessage(
+				`Quantum Mobile VM detected ONLINE (127.0.0.1:2222)! Added to your clusters.`,
+				'Connect Terminal Now',
+				'View Setup Guide'
+			);
+			if (choice === 'Connect Terminal Now') {
+				this.connectClusterTerminal(item);
+			} else if (choice === 'View Setup Guide') {
+				this.openQuantumMobileGuide();
+			}
+		} else {
+			const choice = await vscode.window.showWarningMessage(
+				`Quantum Mobile VM is not responding on 127.0.0.1:2222.\n\nMake sure the VM is running in VirtualBox with Port Forwarding (Host 2222 -> Guest 22) or Docker is running.`,
+				{ modal: true },
+				'Add Anyway',
+				'Open Setup Guide'
+			);
+
+			if (choice === 'Add Anyway') {
+				await savePreset();
+				vscode.window.showInformationMessage(
+					`Quantum Mobile preset added. Once your VM is started in VirtualBox, connect from the Remote Clusters view.`
+				);
+			} else if (choice === 'Open Setup Guide') {
+				this.openQuantumMobileGuide();
+			}
+		}
+	}
+
+	private testTcpPort(host: string, port: number, timeoutMs = 2500): Promise<boolean> {
+		return new Promise<boolean>((resolve) => {
+			const socket = new net.Socket();
+			let finished = false;
+
+			const done = (result: boolean) => {
+				if (!finished) {
+					finished = true;
+					socket.destroy();
+					resolve(result);
+				}
+			};
+
+			socket.setTimeout(timeoutMs);
+			socket.once('connect', () => done(true));
+			socket.once('timeout', () => done(false));
+			socket.once('error', () => done(false));
+
+			try {
+				socket.connect(port, host);
+			} catch {
+				done(false);
+			}
+		});
+	}
+
+	private _guidePanel: vscode.WebviewPanel | null = null;
+
+	/**
+	 * Open the Quantum Mobile Setup and Troubleshooting Guide webview
+	 */
+	public openQuantumMobileGuide(): void {
+		if (this._guidePanel) {
+			this._guidePanel.reveal(vscode.ViewColumn.Active);
+			return;
+		}
+
+		this._guidePanel = vscode.window.createWebviewPanel(
+			'hpc-studio.quantumMobileGuide',
+			'Quantum Mobile Setup Guide',
+			vscode.ViewColumn.Active,
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true,
+			}
+		);
+
+		this._guidePanel.webview.html = this.getQuantumMobileGuideHtml();
+
+		this._guidePanel.onDidDispose(() => {
+			this._guidePanel = null;
+		});
+
+		this._guidePanel.webview.onDidReceiveMessage(async (message) => {
+			switch (message.command) {
+				case 'addQuantumMobile':
+					await this.addQuantumMobile();
+					break;
+				case 'connectTerminal': {
+					const qmItem = this._clusters.find(
+						(c) => c.cluster.hostname === '127.0.0.1' && c.cluster.port === 2222
+					);
+					if (qmItem) {
+						this.connectClusterTerminal(qmItem);
+					} else {
+						await this.addQuantumMobile();
+					}
+					break;
+				}
+				case 'openExternal':
+					if (message.url) {
+						vscode.env.openExternal(vscode.Uri.parse(message.url));
+					}
+					break;
+			}
+		});
+	}
+
+	private getQuantumMobileGuideHtml(): string {
+		return `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Quantum Mobile Setup Guide</title>
+	<style>
+		body {
+			font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+			color: var(--vscode-editor-foreground);
+			background-color: var(--vscode-editor-background);
+			line-height: 1.6;
+			padding: 24px;
+			max-width: 900px;
+			margin: 0 auto;
+		}
+		h1 {
+			font-size: 1.8rem;
+			font-weight: 600;
+			margin-bottom: 6px;
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			color: var(--vscode-foreground);
+		}
+		.subtitle {
+			font-size: 1.05rem;
+			color: var(--vscode-descriptionForeground);
+			margin-bottom: 24px;
+		}
+		.badge-row {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 8px;
+			margin-bottom: 24px;
+		}
+		.badge {
+			display: inline-block;
+			padding: 3px 10px;
+			border-radius: 12px;
+			font-size: 0.8rem;
+			font-weight: 500;
+			background: var(--vscode-badge-background);
+			color: var(--vscode-badge-foreground);
+		}
+		.card {
+			background: var(--vscode-sideBar-background, rgba(127, 127, 127, 0.08));
+			border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.2));
+			border-radius: 8px;
+			padding: 20px;
+			margin-bottom: 24px;
+		}
+		.card h2 {
+			font-size: 1.25rem;
+			margin-top: 0;
+			margin-bottom: 12px;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+		.specs-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 12px;
+			margin-top: 14px;
+		}
+		.spec-item {
+			background: var(--vscode-editor-background);
+			border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.15));
+			border-radius: 6px;
+			padding: 10px 14px;
+		}
+		.spec-label {
+			font-size: 0.78rem;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			color: var(--vscode-descriptionForeground);
+		}
+		.spec-value {
+			font-size: 1.05rem;
+			font-weight: 600;
+			color: var(--vscode-textLink-foreground);
+			font-family: var(--vscode-editor-font-family, monospace);
+		}
+		pre, code {
+			font-family: var(--vscode-editor-font-family, Consolas, Monaco, monospace);
+		}
+		pre {
+			background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.2));
+			border: 1px solid var(--vscode-widget-border, rgba(127, 127, 127, 0.2));
+			border-radius: 6px;
+			padding: 12px 16px;
+			overflow-x: auto;
+			margin: 10px 0;
+		}
+		code {
+			background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.15));
+			padding: 2px 5px;
+			border-radius: 4px;
+		}
+		pre code {
+			background: transparent;
+			padding: 0;
+		}
+		ol, ul {
+			padding-left: 20px;
+		}
+		li {
+			margin-bottom: 8px;
+		}
+		.btn-group {
+			display: flex;
+			gap: 12px;
+			margin-top: 16px;
+			flex-wrap: wrap;
+		}
+		button {
+			background: var(--vscode-button-background);
+			color: var(--vscode-button-foreground);
+			border: none;
+			border-radius: 4px;
+			padding: 8px 16px;
+			font-size: 0.9rem;
+			font-weight: 500;
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			transition: background-color 0.15s ease;
+		}
+		button:hover {
+			background: var(--vscode-button-hoverBackground);
+		}
+		button.secondary {
+			background: var(--vscode-button-secondaryBackground);
+			color: var(--vscode-button-secondaryForeground);
+		}
+		button.secondary:hover {
+			background: var(--vscode-button-secondaryHoverBackground);
+		}
+		.tip-box {
+			border-left: 4px solid var(--vscode-charts-blue, #3794ff);
+			background: var(--vscode-textBlockQuote-background, rgba(55, 148, 255, 0.1));
+			padding: 12px 16px;
+			margin: 16px 0;
+			border-radius: 0 6px 6px 0;
+		}
+	</style>
+</head>
+<body>
+	<h1>📦 Quantum Mobile Setup & Connectivity Guide</h1>
+	<div class="subtitle">Quick setup guide for running Quantum ESPRESSO, AiiDA, and Slurm locally via VirtualBox, Docker, or WSL2.</div>
+
+	<div class="badge-row">
+		<span class="badge">Quantum ESPRESSO 7.x</span>
+		<span class="badge">AiiDA</span>
+		<span class="badge">Slurm Workload Manager</span>
+		<span class="badge">Wannier90</span>
+		<span class="badge">Yambo</span>
+		<span class="badge">Fleur</span>
+		<span class="badge">CP2K</span>
+	</div>
+
+	<div class="card">
+		<h2>🔑 Default Connection Credentials</h2>
+		<div class="specs-grid">
+			<div class="spec-item">
+				<div class="spec-label">Host</div>
+				<div class="spec-value">127.0.0.1</div>
+			</div>
+			<div class="spec-item">
+				<div class="spec-label">SSH Port Forward</div>
+				<div class="spec-value">2222 &rarr; 22</div>
+			</div>
+			<div class="spec-item">
+				<div class="spec-label">Username</div>
+				<div class="spec-value">max</div>
+			</div>
+			<div class="spec-item">
+				<div class="spec-label">Password</div>
+				<div class="spec-value">moritz</div>
+			</div>
+		</div>
+		<div class="btn-group">
+			<button id="btnAddPreset">⚡ Test Connection & Add Preset</button>
+			<button id="btnConnectTerminal" class="secondary">💻 Open SSH Terminal</button>
+			<button id="btnOpenDocs" class="secondary">🌐 Official Materials Cloud Appliance</button>
+		</div>
+	</div>
+
+	<div class="card">
+		<h2>🖥️ VirtualBox Setup (Windows, macOS Intel, Linux)</h2>
+		<ol>
+			<li><strong>Download Quantum Mobile appliance:</strong> Get the latest <code>.ova</code> image from <a href="#" id="linkMcDownload">Materials Cloud Quantum Mobile</a>.</li>
+			<li><strong>Import into VirtualBox:</strong> Open Oracle VirtualBox &rarr; <em>File</em> &rarr; <em>Import Appliance...</em> and select the <code>.ova</code> file.</li>
+			<li><strong>Configure SSH Port Forwarding:</strong>
+				<ul>
+					<li>Select the imported VM &rarr; click <strong>Settings</strong> &rarr; <strong>Network</strong>.</li>
+					<li>Ensure <strong>Adapter 1</strong> is attached to <strong>NAT</strong>.</li>
+					<li>Click <strong>Advanced</strong> &rarr; <strong>Port Forwarding</strong>.</li>
+					<li>Add a new rule:
+						<ul>
+							<li><strong>Name:</strong> <code>SSH</code></li>
+							<li><strong>Protocol:</strong> <code>TCP</code></li>
+							<li><strong>Host IP:</strong> <code>127.0.0.1</code></li>
+							<li><strong>Host Port:</strong> <code>2222</code></li>
+							<li><strong>Guest IP:</strong> <em>(leave blank)</em></li>
+							<li><strong>Guest Port:</strong> <code>22</code></li>
+						</ul>
+					</li>
+				</ul>
+				<div class="tip-box">
+					<strong>Terminal / CLI Shortcut (All OS):</strong> If you prefer the command line, run:
+					<pre><code>VBoxManage modifyvm "quantum-mobile-24.04" --natpf1 "guestssh,tcp,127.0.0.1,2222,,22"</code></pre>
+				</div>
+			</li>
+			<li><strong>Start the Virtual Machine:</strong> Click <strong>Start</strong> (or Headless Start). Wait for the boot process to complete.</li>
+			<li><strong>Connect:</strong> Click <em>Test Connection & Add Preset</em> above or open an integrated terminal with <code>ssh max@127.0.0.1 -p 2222</code> (password: <code>moritz</code>).</li>
+		</ol>
+	</div>
+
+	<div class="card">
+		<h2>🐳 Docker Alternative (Linux, macOS Apple Silicon, Windows)</h2>
+		<p>For Apple Silicon (M1/M2/M3/M4) or containerized workflows, you can run Quantum Mobile via Docker:</p>
+		<pre><code>docker run -d --name quantum-mobile \\
+  -p 2222:22 -p 8888:8888 \\
+  -e USER_PASS=moritz \\
+  materialscloud/quantum-mobile:latest</code></pre>
+		<p>Once the container is healthy, SSH to port <code>2222</code> will route directly into the container.</p>
+	</div>
+
+	<div class="card">
+		<h2>🐧 WSL2 Integration (Windows)</h2>
+		<p>If you run Quantum ESPRESSO and Slurm inside Windows Subsystem for Linux (WSL2):</p>
+		<ol>
+			<li>Start SSH server inside WSL2: <code>sudo service ssh start</code></li>
+			<li>If running on port 22 inside WSL2, forward port 2222 to port 22, or connect directly to <code>127.0.0.1:22</code>.</li>
+		</ol>
+	</div>
+
+	<script>
+		const vscode = acquireVsCodeApi();
+
+		document.getElementById('btnAddPreset').addEventListener('click', () => {
+			vscode.postMessage({ command: 'addQuantumMobile' });
+		});
+
+		document.getElementById('btnConnectTerminal').addEventListener('click', () => {
+			vscode.postMessage({ command: 'connectTerminal' });
+		});
+
+		document.getElementById('btnOpenDocs').addEventListener('click', () => {
+			vscode.postMessage({
+				command: 'openExternal',
+				url: 'https://materialscloud.org/work/quantum-mobile'
+			});
+		});
+
+		document.getElementById('linkMcDownload').addEventListener('click', (e) => {
+			e.preventDefault();
+			vscode.postMessage({
+				command: 'openExternal',
+				url: 'https://materialscloud.org/work/quantum-mobile'
+			});
+		});
+	</script>
+</body>
+</html>`;
+	}
+
+	/**
 	 * Add custom cluster profile
 	 */
 	public async addCluster(): Promise<void> {
+		const choice = await vscode.window.showQuickPick(
+			[
+				{
+					label: '$(vm) Quantum Mobile (VirtualBox / Docker)',
+					description: '127.0.0.1:2222 (user: max)',
+					detail: 'Local simulation VM with Quantum ESPRESSO, AiiDA, and Slurm pre-installed',
+					id: 'qm',
+				},
+				{
+					label: '$(server) Custom Remote HPC Cluster',
+					description: 'Hostname, User, Port & SSH Key',
+					detail: 'Configure a remote supercomputing cluster via SSH login node',
+					id: 'custom',
+				},
+			],
+			{
+				placeHolder: 'Select cluster configuration method',
+			}
+		);
+
+		if (!choice) {
+			return;
+		}
+
+		if (choice.id === 'qm') {
+			return this.addQuantumMobile();
+		}
+
 		const name = await vscode.window.showInputBox({
 			prompt: 'Cluster display name (e.g. Laboratory Supercomputer)',
 			placeHolder: 'My HPC Cluster',
@@ -491,6 +969,10 @@ export class ClustersTreeDataProvider
 	}
 
 	public dispose(): void {
+		if (this._guidePanel) {
+			this._guidePanel.dispose();
+			this._guidePanel = null;
+		}
 		this._disposables.forEach((d) => d.dispose());
 		this._onDidChangeTreeData.dispose();
 	}

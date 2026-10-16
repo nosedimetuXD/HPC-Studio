@@ -243,6 +243,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
 	);
 
 	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.addQuantumMobile', async () => {
+			await clustersProvider.addQuantumMobile();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('hpc-studio.quantumMobileGuide', () => {
+			clustersProvider.openQuantumMobileGuide();
+		})
+	);
+
+	context.subscriptions.push(
 		vscode.commands.registerCommand('hpc-studio.openTunnel', async (item?: ClusterTreeItem) => {
 			await clustersProvider.openTunnel(item);
 		})

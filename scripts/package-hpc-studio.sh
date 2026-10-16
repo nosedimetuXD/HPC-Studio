@@ -60,7 +60,16 @@ echo "[1/4] Packaging hpc-studio extension (VSIX)..."
   if [ ! -f "media/icons/hpc-studio.png" ] && [ -f "media/icons/hpc-studio.svg" ] && command -v rsvg-convert >/dev/null 2>&1; then
     rsvg-convert -w 256 -h 256 media/icons/hpc-studio.svg -o media/icons/hpc-studio.png
   fi
-  npx tsc -p tsconfig.json
+  if [ ! -d "node_modules" ]; then
+    npm install --prefer-offline || true
+  fi
+  if [ -f "../../node_modules/.bin/tsc" ]; then
+    ../../node_modules/.bin/tsc -p tsconfig.json
+  elif [ -f "./node_modules/.bin/tsc" ]; then
+    ./node_modules/.bin/tsc -p tsconfig.json
+  else
+    npx --yes typescript tsc -p tsconfig.json
+  fi
   npx --yes @vscode/vsce package --no-dependencies --out "${OUTPUT_DIR}/hpc-studio.vsix"
   # Also keep a copy named with version
   cp "${OUTPUT_DIR}/hpc-studio.vsix" "${OUTPUT_DIR}/hpc-studio-1.0.0.vsix"

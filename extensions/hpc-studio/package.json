@@ -511,13 +511,11 @@
 		"package": "vsce package --no-dependencies"
 	},
 	"devDependencies": {
-		"@types/node": "24.x"
+		"@types/node": "24.x",
+		"typescript": "^5.7.0"
 	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/nosedimetuXD/HPC-Studio.git"
-	},
-	"dependencies": {
-		"three": "^0.186.1"
 	}
 }

@@ -68,7 +68,7 @@ echo "[1/4] Packaging hpc-studio extension (VSIX)..."
   elif [ -f "./node_modules/.bin/tsc" ]; then
     ./node_modules/.bin/tsc -p tsconfig.json
   else
-    npx --yes typescript tsc -p tsconfig.json
+    npx --package typescript tsc -p tsconfig.json
   fi
   npx --yes @vscode/vsce package --no-dependencies --out "${OUTPUT_DIR}/hpc-studio.vsix"
   # Also keep a copy named with version

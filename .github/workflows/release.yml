@@ -43,7 +43,7 @@ jobs:
         working-directory: extensions/hpc-studio
         run: |
           mkdir -p dist
-          npx --yes typescript tsc -p tsconfig.json
+          ./node_modules/.bin/tsc -p tsconfig.json
           npx --yes @vscode/vsce package --no-dependencies --out dist/hpc-studio.vsix
           cp dist/hpc-studio.vsix dist/hpc-studio-1.0.0.vsix
 

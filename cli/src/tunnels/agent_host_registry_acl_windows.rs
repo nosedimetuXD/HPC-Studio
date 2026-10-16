@@ -285,6 +285,14 @@ mod tests {
 			)
 		};
 		assert_eq!(result, 0, "GetNamedSecurityInfoW failed: {result}");
+		assert!(
+			!descriptor.is_null(),
+			"GetNamedSecurityInfoW returned a null security descriptor"
+		);
+		assert!(
+			!dacl.is_null(),
+			"GetNamedSecurityInfoW returned a null DACL pointer"
+		);
 		(SecurityDescriptor::from_raw(descriptor), dacl)
 	}
 
@@ -308,6 +316,11 @@ mod tests {
 			"DACL must be protected (no inheritance from the parent directory)"
 		);
 
+		assert!(
+			!dacl.is_null(),
+			"GetNamedSecurityInfoW returned a null DACL pointer"
+		);
+
 		// SAFETY: `dacl` points into `descriptor`, which is still alive.
 		let ace_count = unsafe { (*dacl).AceCount };
 		assert_eq!(ace_count, 3, "expected exactly one ACE per granted SID");
@@ -318,9 +331,13 @@ mod tests {
 			// SAFETY: `index` is within `[0, ace_count)`; `dacl` is valid.
 			let ok = unsafe { GetAce(dacl, index, &mut ace_ptr) };
 			assert_ne!(ok, 0, "GetAce failed for index {index}");
+			assert!(
+				!ace_ptr.is_null(),
+				"GetAce returned a null ACE pointer for index {index}"
+			);
 
 			// SAFETY: every ACE in an SDDL-built `(A;...)` DACL is an
-			// `ACCESS_ALLOWED_ACE`, and `ace_ptr` was just validated above.
+			// `ACCESS_ALLOWED_ACE`, and `ace_ptr` was validated above.
 			let ace = unsafe { &*(ace_ptr as *const ACCESS_ALLOWED_ACE) };
 			assert_eq!(ace.Header.AceType, ACCESS_ALLOWED_ACE_TYPE);
 			let inherit_flags = OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE;

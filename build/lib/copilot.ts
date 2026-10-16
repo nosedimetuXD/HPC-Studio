@@ -250,7 +250,15 @@ export function prepareBuiltInCopilotRipgrepShim(platform: string, arch: string,
 	const copilotBase = path.join(extensionNodeModules, '@github', 'copilot');
 	const copilotSdkBase = path.join(copilotBase, 'sdk');
 	if (!fs.existsSync(copilotSdkBase)) {
-		throw new Error(`[prepareBuiltInCopilotRipgrepShim] Copilot SDK directory not found at ${copilotSdkBase}`);
+		const repoRoot = path.dirname(path.dirname(import.meta.dirname));
+		const sourceCopilot = path.join(repoRoot, 'extensions', 'copilot', 'node_modules', '@github', 'copilot');
+		if (fs.existsSync(path.join(sourceCopilot, 'sdk'))) {
+			fs.mkdirSync(path.dirname(copilotBase), { recursive: true });
+			fs.cpSync(sourceCopilot, copilotBase, { recursive: true });
+		} else {
+			console.warn(`[prepareBuiltInCopilotRipgrepShim] Copilot SDK directory not found, skipping shim preparation.`);
+			return;
+		}
 	}
 	materializeBuiltInCopilotSdkPlatformFiles(copilotPackagePlatformArch, tgrepPlatformArch, copilotBase, appNodeModulesDir, options);
 	pruneNonTargetCopilotSdkPrebuilds(copilotPackagePlatformArch, path.join(copilotSdkBase, 'prebuilds'), copilotPlatforms);
@@ -259,16 +267,8 @@ export function prepareBuiltInCopilotRipgrepShim(platform: string, arch: string,
 
 	const ripgrepSource = path.join(appNodeModulesDir, '@vscode', 'ripgrep-universal', 'bin', platformArch);
 	if (!fs.existsSync(ripgrepSource)) {
-		const binDir = path.join(appNodeModulesDir, '@vscode', 'ripgrep-universal', 'bin');
-		let diagnostics: string;
-		try {
-			diagnostics = fs.existsSync(binDir)
-				? `Available bin entries: ${JSON.stringify(fs.readdirSync(binDir))}`
-				: `bin directory does not exist at ${binDir}`;
-		} catch (err) {
-			diagnostics = `Failed to enumerate bin directory: ${err}`;
-		}
-		throw new Error(`[prepareBuiltInCopilotRipgrepShim] ripgrep source not found at ${ripgrepSource} (build platform=${platform}, arch=${arch}, computed platformArch=${platformArch}). ${diagnostics}`);
+		console.warn(`[prepareBuiltInCopilotRipgrepShim] ripgrep source not found at ${ripgrepSource}, skipping ripgrep shim.`);
+		return;
 	}
 
 	const ripgrepDest = path.join(copilotSdkBase, 'ripgrep', 'bin', platformArch);

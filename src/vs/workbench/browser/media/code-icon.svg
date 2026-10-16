@@ -1,1 +1,50 @@
-<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><style>.st0{fill:#f6f6f6;fill-opacity:0}.st1{fill:#fff}.st2{fill:#167abf}</style><path class="st0" d="M1024 1024H0V0h1024v1024z"/><path class="st1" d="M1024 85.333v853.333H0V85.333h1024z"/><path class="st2" d="M0 85.333h298.667v853.333H0V85.333zm1024 0v853.333H384V85.333h640zm-554.667 160h341.333v-64H469.333v64zm341.334 533.334H469.333v64h341.333l.001-64zm128-149.334H597.333v64h341.333l.001-64zm0-149.333H597.333v64h341.333l.001-64zm0-149.333H597.333v64h341.333l.001-64z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="hpcGlow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#A6F7FF" />
+      <stop offset="40%" stop-color="#00E5FF" />
+      <stop offset="85%" stop-color="#00B0FF" />
+      <stop offset="100%" stop-color="#0088CC" />
+    </radialGradient>
+    <linearGradient id="facetGradTop" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#80F3FF" />
+      <stop offset="100%" stop-color="#00B0FF" />
+    </linearGradient>
+    <linearGradient id="facetGradLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#80F3FF" />
+      <stop offset="100%" stop-color="#00B0FF" />
+    </linearGradient>
+    <linearGradient id="facetGradRight" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#80F3FF" />
+      <stop offset="100%" stop-color="#00B0FF" />
+    </linearGradient>
+    <filter id="neonBloom" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.2" result="blur" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0   0 0.9 0 0 0.9   0 0 1 0 1  0 0 0 0.75 0" result="bloom" />
+      <feMerge>
+        <feMergeNode in="bloom" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#neonBloom)" fill="url(#hpcGlow)">
+    <!-- 1. Central Core Inverted Triangle -->
+    <polygon points="256.00,342.00 330.48,213.00 181.52,213.00" />
+    <!-- 2a. Triangular Frame: Top Facet -->
+    <polygon fill="url(#facetGradTop)" points="92.47,159.00 419.53,159.00 353.71,197.00 158.29,197.00" />
+    <!-- 2b. Triangular Frame: Left Facet -->
+    <polygon fill="url(#facetGradLeft)" points="89.39,163.76 155.21,201.76 253.20,374.00 253.20,445.80" />
+    <!-- 2c. Triangular Frame: Right Facet -->
+    <polygon fill="url(#facetGradRight)" points="422.61,163.76 258.80,445.80 258.80,374.00 356.79,201.76" />
+    <!-- 3. Outer Circular Ring Segments -->
+    <path d="M 348.74 47.71 A 228.00 228.00 0 0 0 163.26 47.71 L 206.13 144.00 L 305.87 144.00 Z" />
+    <path d="M 29.25 279.83 A 228.00 228.00 0 0 0 121.98 440.46 L 183.94 355.18 L 134.07 268.82 Z" />
+    <path d="M 390.02 440.46 A 228.00 228.00 0 0 0 482.75 279.83 L 377.93 268.82 L 328.06 355.18 Z" />
+    <path d="M 440.46 121.98 A 228.00 228.00 0 0 0 363.04 54.69 L 315.55 144.00 L 410.15 144.00 Z" />
+    <path d="M 483.86 263.96 A 228.00 228.00 0 0 0 464.29 163.26 L 430.07 178.50 L 382.77 260.43 Z" />
+    <path d="M 148.96 54.69 A 228.00 228.00 0 0 0 71.54 121.98 L 101.85 144.00 L 196.45 144.00 Z" />
+    <path d="M 47.71 163.26 A 228.00 228.00 0 0 0 28.14 263.96 L 129.23 260.43 L 81.93 178.50 Z" />
+    <path d="M 135.18 449.35 A 228.00 228.00 0 0 0 232.17 482.75 L 236.08 445.50 L 188.78 363.57 Z" />
+    <path d="M 279.83 482.75 A 228.00 228.00 0 0 0 376.82 449.35 L 323.22 363.57 L 275.92 445.50 Z" />
+  </g>
+</svg>

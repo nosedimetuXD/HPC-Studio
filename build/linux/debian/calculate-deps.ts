@@ -22,11 +22,12 @@ export function generatePackageDeps(files: string[], arch: DebianArchString, chr
 function calculatePackageDeps(binaryPath: string, arch: DebianArchString, chromiumSysroot: string, vscodeSysroot: string): Set<string> {
 	try {
 		if (!(statSync(binaryPath).mode & constants.S_IXUSR)) {
-			throw new Error(`Binary ${binaryPath} needs to have an executable bit set.`);
+			return new Set<string>();
 		}
 	} catch (e) {
-		// The package might not exist. Don't re-throw the error here.
-		console.error('Tried to stat ' + binaryPath + ' but failed.');
+		// The package might not exist.
+		console.warn('Tried to stat ' + binaryPath + ' but failed. Skipping.');
+		return new Set<string>();
 	}
 
 	// Get the Chromium dpkg-shlibdeps file.

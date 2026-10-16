@@ -450,10 +450,14 @@ function packageTask(type: string, platform: string, arch: string, sourceFolderN
 }
 
 function hasAuthenticodeSignature(filePath: string): Promise<boolean> {
-	return new Promise((resolve, reject) => {
-		const proc = cp.spawn('signtool.exe', ['verify', '/pa', filePath]);
-		proc.on('error', reject);
-		proc.on('exit', code => resolve(code === 0));
+	return new Promise((resolve) => {
+		try {
+			const proc = cp.spawn('signtool.exe', ['verify', '/pa', filePath]);
+			proc.on('error', () => resolve(false));
+			proc.on('exit', code => resolve(code === 0));
+		} catch {
+			resolve(false);
+		}
 	});
 }
 

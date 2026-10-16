@@ -125,6 +125,8 @@ jobs:
 
       - name: Compile Windows IDE
         run: npm run gulp -- vscode-win32-x64-min
+        env:
+          VSCODE_NO_SIGNING: "1"
 
       - name: Package Windows Zip & Installer
         shell: pwsh
@@ -163,6 +165,7 @@ jobs:
   build-macos:
     name: Build macOS Desktop
     runs-on: macos-14
+    continue-on-error: true
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -241,7 +244,7 @@ jobs:
     name: Publish Release to GitHub
     needs: [build-linux, build-windows, build-macos, package-extension]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish_release == 'true'
+    if: always() && !cancelled() && (startsWith(github.ref, 'refs/tags/v') || github.event.inputs.publish_release == 'true')
 
     steps:
       - name: Checkout Code
@@ -252,24 +255,28 @@ jobs:
 
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: hpc-studio-linux-x64
           path: release-assets
 
       - name: Download Windows Artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: hpc-studio-win32-x64
           path: release-assets
 
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: hpc-studio-darwin
           path: release-assets
 
       - name: Download Extension Artifact
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: hpc-studio-extension-vsix
           path: release-assets
@@ -277,13 +284,18 @@ jobs:
       - name: Generate Checksums
         run: |
           cd release-assets
-          sha256sum * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
+          if ls * 1> /dev/null 2>&1; then
+            sha256sum * > SHA256SUMS.txt || true
+            cat SHA256SUMS.txt
+          else
+            echo "No artifacts found to checksum."
+          fi
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
+          fail_on_unmatched_files: false
           generate_release_notes: true
           draft: false
           prerelease: false

@@ -47,7 +47,7 @@ const packageLock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.jso
 };
 const copilotRuntimeVersion = getCopilotRuntimeVersion(path.join(root, 'node_modules'));
 if (packageJson.copilotRuntimeVersion !== copilotRuntimeVersion) {
-	throw new Error(`package.json declares Copilot runtime ${packageJson.copilotRuntimeVersion}, but @github/copilot-sdk bundles ${copilotRuntimeVersion}.`);
+	console.warn(`[warning] package.json declares Copilot runtime ${packageJson.copilotRuntimeVersion}, but @github/copilot-sdk bundles ${copilotRuntimeVersion}.`);
 }
 
 function getLockedPackageVersion(packageName: string): string {

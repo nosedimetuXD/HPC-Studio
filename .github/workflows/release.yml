@@ -17,6 +17,9 @@ permissions:
 
 env:
   NODE_OPTIONS: "--max-old-space-size=8192"
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
 
 jobs:
   # ============================================================================
@@ -141,14 +144,20 @@ jobs:
           # Build InnoSetup installer if available
           try {
             npm run gulp -- vscode-win32-x64-user-setup
-            $installer = Get-ChildItem -Path ".build\win32-x64\user-setup" -Filter "*.exe" -Recurse | Select-Object -First 1
-            if ($installer) {
-              Copy-Item $installer.FullName -Destination "dist\hpc-studio-$version-setup.exe"
-              Write-Host "Installer copied to dist\hpc-studio-$version-setup.exe"
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "InnoSetup exited with code $LASTEXITCODE; continuing with portable ZIP archive."
+              $global:LASTEXITCODE = 0
+            } else {
+              $installer = Get-ChildItem -Path ".build\win32-x64\user-setup" -Filter "*.exe" -Recurse | Select-Object -First 1
+              if ($installer) {
+                Copy-Item $installer.FullName -Destination "dist\hpc-studio-$version-setup.exe"
+                Write-Host "Installer copied to dist\hpc-studio-$version-setup.exe"
+              }
             }
           } catch {
             Write-Warning "InnoSetup build skipped or not available: $_"
           }
+          $global:LASTEXITCODE = 0
           
           Get-ChildItem -Path dist
 
@@ -189,6 +198,9 @@ jobs:
           c++ --version
           xcode-select -print-path
           python3 -m pip install --break-system-packages setuptools || true
+          export MACOSX_DEPLOYMENT_TARGET="11.0"
+          export CFLAGS="-mmacosx-version-min=11.0"
+          export CXXFLAGS="-mmacosx-version-min=11.0"
           for i in {1..5}; do
             npm ci && break
             if [ $i -eq 5 ]; then
@@ -205,6 +217,9 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GYP_DEFINES: "kerberos_use_rtld=false"
+          MACOSX_DEPLOYMENT_TARGET: "11.0"
+          CFLAGS: "-mmacosx-version-min=11.0"
+          CXXFLAGS: "-mmacosx-version-min=11.0"
 
       - name: Compile macOS Apple Silicon (arm64)
         run: npm run gulp -- vscode-darwin-arm64-min

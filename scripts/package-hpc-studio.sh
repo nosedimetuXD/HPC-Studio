@@ -131,6 +131,64 @@ else
   echo "  [!] Note: rpmbuild not installed. Skipping .rpm creation."
 fi
 
+# AppImage package
+echo "  -> Building AppImage package..."
+APPDIR=".build/linux/appdir"
+rm -rf "${APPDIR}"
+mkdir -p "${APPDIR}/usr"
+
+# Copy compiled IDE binaries into AppDir
+cp -r "${BINARY_DIR}/"* "${APPDIR}/usr/"
+
+# Copy icon and desktop entry to root of AppDir
+if [ -f "resources/linux/code.png" ]; then
+  cp "resources/linux/code.png" "${APPDIR}/hpc-studio.png"
+elif [ -f "resources/linux/code.svg" ]; then
+  cp "resources/linux/code.svg" "${APPDIR}/hpc-studio.svg"
+fi
+
+cat << EOF > "${APPDIR}/hpc-studio.desktop"
+[Desktop Entry]
+Name=HPC Studio
+Comment=The Scientific IDE for Supercomputing & Quantum Simulation
+Exec=hpc-studio %F
+Icon=hpc-studio
+Type=Application
+StartupNotify=true
+StartupWMClass=hpc-studio
+Categories=Development;IDE;Science;
+MimeType=text/plain;inode/directory;
+EOF
+
+cat << 'EOF' > "${APPDIR}/AppRun"
+#!/bin/sh
+SELF=$(readlink -f "$0")
+HERE=${SELF%/*}
+export PATH="${HERE}/usr/bin:${PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+exec "${HERE}/usr/bin/hpc-studio" "$@"
+EOF
+chmod +x "${APPDIR}/AppRun"
+
+APPIMAGE_NAME="${APP_NAME}-${VERSION}-${ARCH}.AppImage"
+if ! command -v appimagetool >/dev/null 2>&1; then
+  echo "  [*] Fetching appimagetool..."
+  curl -sLo /tmp/appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH}.AppImage" || true
+  chmod +x /tmp/appimagetool 2>/dev/null || true
+fi
+
+if command -v appimagetool >/dev/null 2>&1; then
+  ARCH="${ARCH}" appimagetool --appimage-extract-and-run "${APPDIR}" "${OUTPUT_DIR}/${APPIMAGE_NAME}" || true
+elif [ -f /tmp/appimagetool ]; then
+  ARCH="${ARCH}" /tmp/appimagetool --appimage-extract-and-run "${APPDIR}" "${OUTPUT_DIR}/${APPIMAGE_NAME}" || true
+fi
+
+if [ -f "${OUTPUT_DIR}/${APPIMAGE_NAME}" ]; then
+  echo "  [+] AppImage package ready: ${OUTPUT_DIR}/${APPIMAGE_NAME}"
+else
+  echo "  [!] Note: AppImage build step completed or skipped if appimagetool was unavailable."
+fi
+
 echo ""
 echo "=================================================================="
 echo " HPC Studio packaging completed successfully!"
